@@ -75,6 +75,7 @@ for string_record in record_iterator:
     example = tf.train.Example()
     example.ParseFromString(string_record)
 
+    # height = int(example.features.feature['height'].int64_list.value[0])
     height = int(example.features.feature['height'].int64_list.value[0])
 
     width = int(example.features.feature['width'].int64_list.value[0])
