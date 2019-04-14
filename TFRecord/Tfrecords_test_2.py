@@ -1,7 +1,11 @@
 # Get some image/annotation pairs for example 
 filename_pairs = [
     ('/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/JPEGImages/IMG_0383.jpeg',
-    '/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/SegmentationClass/IMG_0383.png')
+    '/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/SegmentationClass/IMG_0383.png'),
+    ('/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/JPEGImages/IMG_0390.jpeg',
+    '/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/SegmentationClass/IMG_0390.png'),
+    ('/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/JPEGImages/IMG_0430.jpeg',
+    '/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/SegmentationClass/IMG_0430.png')
 ]
 
 # Important: We are using PIL to read .png files later.
