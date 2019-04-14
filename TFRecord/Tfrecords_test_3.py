@@ -2,8 +2,8 @@ import tensorflow as tf
 import skimage.io as io
 import matplotlib.pyplot as plt
 
-IMAGE_HEIGHT = 384
-IMAGE_WIDTH = 384
+IMAGE_HEIGHT = 4032
+IMAGE_WIDTH = 3024
 
 tfrecords_filename = 'pascal_voc_segmentation.tfrecords'
 
@@ -33,13 +33,13 @@ def read_and_decode(filename_queue):
     height = tf.cast(features['height'], tf.int32)
     width = tf.cast(features['width'], tf.int32)
 
-    image_shape = tf.stack([height, width, 1])
+    image_shape = tf.stack([height, width, 3])
     annotation_shape = tf.stack([height, width, 1])
 
     image = tf.reshape(image, image_shape)
     annotation = tf.reshape(annotation, annotation_shape)
 
-    image_size_const = tf.constant((IMAGE_HEIGHT, IMAGE_WIDTH, 1), dtype=tf.int32)
+    image_size_const = tf.constant((IMAGE_HEIGHT, IMAGE_WIDTH, 3), dtype=tf.int32)
     annotation_size_const = tf.constant((IMAGE_HEIGHT, IMAGE_WIDTH, 1), dtype=tf.int32)
 
     # Random transformations can be put here: right before you crop images
@@ -50,7 +50,7 @@ def read_and_decode(filename_queue):
 
     resized_annotation = tf.image.resize_image_with_crop_or_pad(image=image, target_height=IMAGE_HEIGHT, target_width=IMAGE_WIDTH)
 
-    images, annotations = tf.train.shuffle_batch( [resized_image, resized_annotation], batch_size=2, capacity=32, num_threads=2, min_after_dequeue=10)
+    images, annotations = tf.train.shuffle_batch( [resized_image, resized_annotation], batch_size=2, capacity=30, num_threads=2, min_after_dequeue=10)
 
     return images, annotations
 
@@ -82,10 +82,6 @@ with tf.Session() as sess:
         # We selected the batch size of two
         # So we should get two image pairs in each batch
         # Let's make sure it is random
-
-        # wine_img = plt.imread(img[0, :, :, :])        
-        # plt.imshow(wine_img)
-        # plt.show()
 
         io.imshow(img[0, :, :, :])
         io.show()
