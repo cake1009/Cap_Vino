@@ -1,10 +1,10 @@
 # Get some image/annotation pairs for example 
 filename_pairs = [
-    ('/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/JPEGImages/IMG_0383.jpeg',
+    ('/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/JPEGImages/Pellegrino_Moscato_1.jpeg',
     '/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/SegmentationClass/IMG_0383.png'),
-    ('/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/JPEGImages/IMG_0390.jpeg',
+    ('/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/JPEGImages/Pellegrino_Moscato_4.jpeg',
     '/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/SegmentationClass/IMG_0390.png'),
-    ('/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/JPEGImages/IMG_0430.jpeg',
+    ('/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/JPEGImages/Pellegrino_Moscato_19.jpeg',
     '/Users/Myung/Desktop/0/2019_1/AI_Capston/Cap_Vino/wine_image/Golden_bubbles+Pellegrino_Moscato/SegmentationClass/IMG_0430.png')
 ]
 
@@ -27,7 +27,7 @@ def _bytes_feature(value):
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
-tfrecords_filename = 'pascal_voc_segmentation.tfrecords'
+tfrecords_filename = 'vino.tfrecords'
 
 writer = tf.python_io.TFRecordWriter(tfrecords_filename)
 

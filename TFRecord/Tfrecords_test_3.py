@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 IMAGE_HEIGHT = 4032
 IMAGE_WIDTH = 3024
 
-tfrecords_filename = 'pascal_voc_segmentation.tfrecords'
+# tfrecords_filename = 'vino.tfrecords'
+tfrecords_filename = 'vino.tfrecords'
 
 def read_and_decode(filename_queue):
 
