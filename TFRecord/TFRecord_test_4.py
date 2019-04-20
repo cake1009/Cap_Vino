@@ -255,7 +255,7 @@ def main(argv=None):
     keep_prob = tf.placeholder(tf.float32) # dropout ratio
     prediction = build_model(images,keep_prob)
     # define loss function
-    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction,labels=labels))
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=prediction,labels=labels))
 
     tf.summary.scalar('loss',loss)
 
