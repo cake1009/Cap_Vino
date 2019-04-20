@@ -2,14 +2,17 @@ import tensorflow as tf
 import skimage.io as io
 import matplotlib.pyplot as plt
 
+#  File Size
 IMAGE_HEIGHT = 4032
 IMAGE_WIDTH = 3024
 
 # tfrecords_filename = 'vino.tfrecords'
 tfrecords_filename = 'vino.tfrecords'
 
+#  tfrecord 파일을 읽어서 안에 있는 정보 풀어주는 함수
 def read_and_decode(filename_queue):
 
+    # tfrecord 파일 읽어서 reader 변수에 넣어주기
     reader = tf.TFRecordReader()
 
     _, serialized_example = reader.read(filename_queue)
