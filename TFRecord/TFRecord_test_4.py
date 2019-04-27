@@ -266,7 +266,6 @@ def main(argv=None):
 
     # for validation
     #with tf.name_scope("prediction"):
- 
     validate_image_batch,validate_label_batch,validate_file_batch = read_data_batch(VALIDATION_FILE)
     label_max = tf.argmax(labels,1)
     pre_max = tf.argmax(prediction,1)
