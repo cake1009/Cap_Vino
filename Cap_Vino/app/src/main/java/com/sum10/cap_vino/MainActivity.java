@@ -78,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {}
 
             if (photoFile != null) {
-                Uri photoURI = FileProvider.getUriForFile(MainActivity.this, "com.sum10.cap_vino.provider", photoFile);
+                Uri photoURI = FileProvider.getUriForFile(MainActivity.this, getPackageName(), photoFile);
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
                 startActivityForResult(intent, CAMERA_CODE);
             }
@@ -89,16 +89,25 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
+        ExifInterface exifInterface = null;
         try {
             if (resultCode == RESULT_OK) {
                 switch (requestCode) {
                     case CAMERA_CODE:
-                        //imageView.setImageURI(data.getData()); //이미지뷰에 이미지 띄우기
                         File file = new File(mCurrentPhotoPath);
                         Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), Uri.fromFile(file));
 
+                        try {
+                            exifInterface = new ExifInterface(mCurrentPhotoPath);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        assert exifInterface != null;
+                        int exifOrientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+                        int exifDegree = exifOrientationToDegrees(exifOrientation);
+
                         if (bitmap != null)
-                            imageView.setImageBitmap(bitmap);
+                            imageView.setImageBitmap(rotate(bitmap, exifDegree));
                         break;
                     default:
                         break;
@@ -121,6 +130,17 @@ public class MainActivity extends AppCompatActivity {
         mCurrentPhotoPath = image.getAbsolutePath();
         return image;
     }
+
+    private int exifOrientationToDegrees(int exifOrientation) { //이미지의 절대경로(각도)를 가져옴
+        if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_90)
+            return 90;
+        else if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_180)
+            return 180;
+        else if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_270)
+            return 270;
+        return 0;
+    }
+
     private Bitmap rotate(Bitmap src, float degree) {
         Matrix matrix = new Matrix();
         matrix.postRotate(degree);
