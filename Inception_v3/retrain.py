@@ -26,11 +26,13 @@ MIN_NUM_IMAGES_REQUIRED_FOR_TESTING = 3
 MAX_NUM_IMAGES_PER_CLASS = 2 ** 27 - 1  # ~134M
 
 # path to folders of labeled images
+# os.getcwd() : 현재 사용하고 있는 프로세스의 dictionary 위치를 unicode string으로 알려준다.
 TRAINING_IMAGES_DIR = os.getcwd() + '/training_images'
 
 TEST_IMAGES_DIR = os.getcwd() + "/test_images/"
 
 # where to save the trained graph
+# 학습하고 저장된 graph file
 OUTPUT_GRAPH = os.getcwd() + '/' + 'retrained_graph.pb'
 
 # where to save the intermediate graphs
