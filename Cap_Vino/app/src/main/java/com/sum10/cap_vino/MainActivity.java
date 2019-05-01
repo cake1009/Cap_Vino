@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
+    //명순철
     private void onCamera() {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
