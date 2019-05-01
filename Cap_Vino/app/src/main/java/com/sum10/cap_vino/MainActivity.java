@@ -1,6 +1,7 @@
 package com.sum10.cap_vino;
 
 import android.Manifest;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -26,6 +27,12 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -37,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private final int REQUEST_PERMISSION_CODE = 2222; //퍼미션 요청 코드
     private ImageView imageView;
     private String mCurrentPhotoPath;
+    private StorageReference storageReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        storageReference = FirebaseStorage.getInstance().getReference();
         imageView = findViewById(R.id.imageView);
 
         FloatingActionButton fab = findViewById(R.id.fab);
@@ -106,8 +115,41 @@ public class MainActivity extends AppCompatActivity {
                         int exifOrientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
                         int exifDegree = exifOrientationToDegrees(exifOrientation);
 
-                        if (bitmap != null)
-                            imageView.setImageBitmap(rotate(bitmap, exifDegree));
+                        if (bitmap != null) {
+                            //imageView.setImageBitmap(rotate(bitmap, exifDegree)); //이미지뷰에 세팅
+                            AlertDialog.Builder alert_image = new AlertDialog.Builder(MainActivity.this);
+                            alert_image.setTitle("이 사진으로 검색하십니까?");
+                            ImageView dialogImage = new ImageView(MainActivity.this);
+                            dialogImage.setImageBitmap(rotate(bitmap, exifDegree));
+                            alert_image.setView(dialogImage);
+
+                            alert_image.setPositiveButton("검색", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    Uri uri = Uri.fromFile(new File(mCurrentPhotoPath));
+                                    StorageReference imageReference = storageReference.child("images/" + uri.getLastPathSegment());
+
+                                    imageReference.putFile(uri)
+                                            .addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                                @Override
+                                                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                                    // Get a URL to the uploaded content
+                                                    //Uri downloadUrl = taskSnapshot.getDownloadUrl();
+                                                }
+                                            })
+                                            .addOnFailureListener(new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception exception) {
+                                                    // Handle unsuccessful uploads
+                                                    // ...
+                                                }
+                                            });
+                                    Intent intent = new Intent(MainActivity.this, LoadingActivity.class);
+                                    startActivity(intent);
+                                }
+                            });
+                            alert_image.show();
+                        }
                         break;
                     default:
                         break;
