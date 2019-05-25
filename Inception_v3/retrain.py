@@ -103,6 +103,7 @@ MODEL_DIR = os.getcwd() + "/" + "model"
 BOTTLENECK_DIR = os.getcwd() + '/' + 'bottleneck_data'
 
 # the name of the output classification layer in the retrained graph
+# 학습된 그래프 저장 위치
 FINAL_TENSOR_NAME = 'final_result'
 
 # whether to randomly flip half of the training images horizontally
