@@ -18,17 +18,20 @@ from tensorflow.python.platform import gfile
 from tensorflow.python.util import compat
 
 # module level variables ##############################################################################################
+# 학습하는데 최소 학습 데이터 수
 MIN_NUM_IMAGES_REQUIRED_FOR_TRAINING = 10
+# 학습하는데 권장하는 학습 데이터 수
 MIN_NUM_IMAGES_SUGGESTED_FOR_TRAINING = 100
-
+# 테스트하는데 최소 테스트 데이터 수
 MIN_NUM_IMAGES_REQUIRED_FOR_TESTING = 3
-
-MAX_NUM_IMAGES_PER_CLASS = 2 ** 27 - 1  # ~134M
+# 각 샘플 별 최대 이미지 파일 크기 : ~134M
+MAX_NUM_IMAGES_PER_CLASS = 2 ** 27 - 1
 
 # path to folders of labeled images
 # os.getcwd() : 현재 사용하고 있는 프로세스의 dictionary 위치를 unicode string으로 알려준다.
+# 학습 데이터 위치
 TRAINING_IMAGES_DIR = os.getcwd() + '/training_images'
-
+# 테스트 데이터 위치
 TEST_IMAGES_DIR = os.getcwd() + "/test_images/"
 
 # where to save the trained graph
@@ -36,55 +39,71 @@ TEST_IMAGES_DIR = os.getcwd() + "/test_images/"
 OUTPUT_GRAPH = os.getcwd() + '/' + 'retrained_graph.pb'
 
 # where to save the intermediate graphs
+# ****** 중간 그래프 저장 위치
 INTERMEDIATE_OUTPUT_GRAPHS_DIR = os.getcwd() + '/intermediate_graph'
 
 # how many steps to store intermediate graph, if "0" then will not store
+# ****** 중간 그래프가 얼마나 보관되어 있는지 확인하는 함수 - 0일 경우 저장 안됨
 INTERMEDIATE_STORE_FREQUENCY = 0
 
 # where to save the trained graph's labels
+# 학습된 그래프 라벨 저장 위치
 OUTPUT_LABELS = os.getcwd() + '/' + 'retrained_labels.txt'
 
 # where to save summary logs for TensorBoard
+# 학습의 진행사항을 볼 수 있는 텐서보드 저장 위치
 TENSORBOARD_DIR = os.getcwd() + '/' + 'tensorboard_logs'
 
 # how many training steps to run before ending
 # NOTE: original Google default is 4000, use 4000 (or possibly higher) for production grade results
-HOW_MANY_TRAINING_STEPS=500
+# 학습을 몇번 동안 할 것인지 지정 - 구글은 디폴트 값으로 4000을 권장한다.
+HOW_MANY_TRAINING_STEPS=300
 
 # how large a learning rate to use when training
-LEARNING_RATE = 0.01
+# learning rate 값 지정
+LEARNING_RATE = 0.001
 
 # what percentage of images to use as a test set
+# 테스트 셋에 비례하여 사용할 이미지 percentage
 TESTING_PERCENTAGE = 10
 
 # what percentage of images to use as a validation set
+# 발리데이션 셋에 비례하여 사용할 이미지 percentage
 VALIDATION_PERCENTAGE = 10
 
 # how often to evaluate the training results
+# 학습 결과를 몇번 평가할 것인가.
 EVAL_STEP_INTERVAL = 10
 
 # how many images to train on at a time
+# 학습할 때 사용할 배치 사이츠 지정
 TRAIN_BATCH_SIZE = 100
 
 # How many images to test on. This test set is only used once, to evaluate the final accuracy of the model after
 # training completes.  A value of -1 causes the entire test set to be used, which leads to more stable results across runs.
+# 테스트 때 사용할 배치 사이즈 지정 - '-1'이 의미하는 것은 가지고 있는 테스트 이미지를 하나하나 다 사용하겠다는 것을 의미.
 TEST_BATCH_SIZE = -1
 
 # How many images to use in an evaluation batch. This validation set is used much more often than the test set, and is an early indicator of how
 # accurate the model is during training. A value of -1 causes the entire validation set to be used, which leads to
 # more stable results across training iterations, but may be slower on large training sets.
+# 발리데이션 때 사용할 배치 사이즈 지정.
 VALIDATION_BATCH_SIZE = 100
 
 # whether to print out a list of all misclassified test images
+# 분류하지 못한 학습 데이터를 나타내는 값
 PRINT_MISCLASSIFIED_TEST_IMAGES = False
 
 # Path to classify_image_graph_def.pb, imagenet_synset_to_human_label_map.txt, and imagenet_2012_challenge_label_map_proto.pbtxt
+# 여러 데이터 파일들의 경로 설정
 MODEL_DIR = os.getcwd() + "/" + "model"
 
 # Path to cache bottleneck layer values as files
+# 이미지 파일을 그대로 사용할 경우 과한 버퍼링을 초래할 수 있으므로 이를 해결하기 위해 .txt형태로 이미지 파일 변환
 BOTTLENECK_DIR = os.getcwd() + '/' + 'bottleneck_data'
 
 # the name of the output classification layer in the retrained graph
+# 학습된 그래프 저장 위치
 FINAL_TENSOR_NAME = 'final_result'
 
 # whether to randomly flip half of the training images horizontally
