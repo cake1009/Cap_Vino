@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    
+
     private void onCamera() {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
