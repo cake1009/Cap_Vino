@@ -90,66 +90,62 @@ TEST_BATCH_SIZE = -1
 # 발리데이션 때 사용할 배치 사이즈 지정.
 VALIDATION_BATCH_SIZE = 100
 
-# whether to print out a list of all misclassified test images
 # 분류하지 못한 학습 데이터를 나타내는 값
 PRINT_MISCLASSIFIED_TEST_IMAGES = False
 
-# Path to classify_image_graph_def.pb, imagenet_synset_to_human_label_map.txt, and imagenet_2012_challenge_label_map_proto.pbtxt
 # 여러 데이터 파일들의 경로 설정
 MODEL_DIR = os.getcwd() + "/" + "model"
 
-# Path to cache bottleneck layer values as files
 # 이미지 파일을 그대로 사용할 경우 과한 버퍼링을 초래할 수 있으므로 이를 해결하기 위해 .txt형태로 이미지 파일 변환
 BOTTLENECK_DIR = os.getcwd() + '/' + 'bottleneck_data'
 
-# the name of the output classification layer in the retrained graph
-# 학습된 그래프 저장 위치
+# 마지막 학습된 텐서 그래프 이름 설정
 FINAL_TENSOR_NAME = 'final_result'
 
-# whether to randomly flip half of the training images horizontally
+# 수평 학습된 이미지를 랜덤으로 플립 할 것인가
 FLIP_LEFT_RIGHT = False
 
-# a percentage determining how much of a margin to randomly crop off the training images
+# 학습 이미지를 랜덤하게 잘라낼 여백을 결정하는 백분율
 RANDOM_CROP = 0
 
-# a percentage determining how much to randomly scale up the size of the training images by
+# 학습 이미지 크기를 랜덤하게 키울 비율을 결정하는 백분율
 RANDOM_SCALE = 0
 
-# a percentage determining how much to randomly multiply the training image input pixels up or down by
+# 학습 이미지 입력 픽셀을 위 또는 아래로 무작위로 곱하여 비율을 결정하는 백분율
 RANDOM_BRIGHTNESS = 0
 
-# Which model architecture to use. 'inception_v3' is the most accurate, but also the slowest. For faster or smaller models, chose a MobileNet with
-# the form 'mobilenet_<parameter size>_<input_size>[_quantized]'. For example, 'mobilenet_1.0_224' will pick a model that is 17 MB in size and takes
-# 224 pixel input images, while 'mobilenet_0.25_128_quantized' will choose a much less accurate, but smaller and faster network that's 920 KB
-# on disk and takes 128x128 images. See https://research.googleblog.com/2017/06/mobilenets-open-source-models-for.html for more information on Mobilenet.
+# 사용할 모델 아키텍처. '인셉션_v3'는 높은 정확성을 가지고 있으나 느리다는 단점을 가진다. 더 빠르거나 느린 모델인 경우, 'mobilenet_<parameter size>_<input_size>[_quantized]' 
+# 이 형식의 MobileNet을 선택하는 것이 좋다. 예를 들어 'mobilenet_1.0_224'는 크기가 17MB인 모델을 선택하고 224개 픽셀 입력 이미지를 받으며, 'mobilenet_0.25_128_quantized'는 
+# 훨씬 정확도는 낮지만 디스크에 920KB, 128x128 이미지 크기를 가진 작고 빠른 네트워크를 선택할 것이다.
+# https://research.googleblog.com/2017/06/mobilenets-open-source-models-for.html 참고
 
-# By default this script will use the high accuracy, but comparatively large and slow Inception v3 model architecture.
-# It's recommended that you start with this to validate that you have gathered good training data, but if you want to deploy
-# on resource-limited platforms, you can try the `--architecture` flag with a Mobilenet model. For example:
+# 높은 정확도를 사용하지만 상대적으로 크고 느린 Inception v3 모델 아키텍처를 사용한다.
+# 좋은 교육 데이터를 수집했는지를 검증하기 위해 이 작업부터 시작하는 것이 좋으나, 연구 제한 플랫폼에 배치하려면 MobildNet 모델로 "--architecture" 플래그를 사용할 수 있다.
 
-# example command to run floating-point version of mobilenet:
+# 플로팅 포인트 버전의 moupenet을 실행하는 명령 예:
 # ARCHITECTURE = 'mobilenet_1.0_224'
 
-# example command to run quantized version of mobilenet:
+# 정량화된 버전의 moupenet을 실행하는 명령 예:
 # ARCHITECTURE = 'mobilenet_1.0_224_quantized'
 
-# There are 32 different Mobilenet models to choose from, with a variety of file size and latency options. The first
-# number can be '1.0', '0.75', '0.50', or '0.25' to control the size, and the second controls the input image size,
-# either '224', '192', '160', or '128', with smaller sizes running faster.
-# See https://research.googleblog.com/2017/06/mobilenets-open-source-models-for.html for more information on Mobilenet.
+# 선택할 수 있는 32가지 모빌레넷 모델이 있으며, 다양한 파일 크기와 지연 시간 옵션이 있다. 
+# 첫 번째 숫자는 크기를 제어하기 위해 '1.0', '0.75', '0.50' 또는 '0.25'가 될 수 있으며, 
+# 두 번째 숫자는 입력 이미지 크기를 '224', '192', '160' 또는 '128' 중 하나로 제어하며 작은 크기가 더 빠르게 실행된다.
 ARCHITECTURE = 'inception_v3'
+
 
 #######################################################################################################################
 def main():
-    print("starting program . . .")
-    # make sure the logging output is visible, see https://github.com/tensorflow/tensorflow/issues/3047
-    tf.logging.set_verbosity(tf.logging.INFO)
+    print("프로그램 시작...")
 
+    # tf.logging.set_verbosity(tf.logging.INFO)
+
+    # 학습 디렉토리가 없을 때 에러 표시문:
     if not checkIfNecessaryPathsAndFilesExist():
         return
-    # end if
 
     # prepare necessary directories that can be used during training
+    # 학습 중에 사용할 수 있는 필수 디렉토리 준비.
     prepare_file_system()
 
     # Gather information about the model architecture we'll be using.
@@ -307,105 +303,89 @@ def main():
 
 #######################################################################################################################
 def checkIfNecessaryPathsAndFilesExist():
-    # if the training directory does not exist, show and error message and bail
+    # 학습 디렉토리가 없는 경우, 에러 메세지 표시
     if not os.path.exists(TRAINING_IMAGES_DIR):
         print('')
-        print('ERROR: TRAINING_IMAGES_DIR "' + TRAINING_IMAGES_DIR + '" does not seem to exist')
-        print('Did you set up the training images?')
+        print('에러: TRAINING_IMAGES_DIR "' + TRAINING_IMAGES_DIR + '" 위치에 존재하지 않는다')
+        print('학습 이미지를 올바르게 넣어 놓을것')
         print('')
         return False
-    # end if
 
-    # nested class
     class TrainingSubDir:
-        # constructor
         def __init__(self):
             self.loc = ""
             self.numImages = 0
-        # end constructor
-    # end class
 
-    # declare a list of training sub-directories
+    # 학습 서브 디렉토리 리스트 위치 
     trainingSubDirs = []
 
-    # populate the training sub-directories
+    # 학습 서브 디렉토리를 .txt파일 형식으로 만들기 위한 준비
+    # os.listdir() : OS 모듈에 속하는 os.listdir 함수를 사용하여 ".txt"로 끝나는 모든 파일 특정 경로(".") 검색한다.
     for dirName in os.listdir(TRAINING_IMAGES_DIR):
         currentTrainingImagesSubDir = os.path.join(TRAINING_IMAGES_DIR, dirName)
+        # os.path.isdir(): 경로가 기존 디렉터리인 경우 True 리턴. 
         if os.path.isdir(currentTrainingImagesSubDir):
             trainingSubDir = TrainingSubDir()
             trainingSubDir.loc = currentTrainingImagesSubDir
             trainingSubDirs.append(trainingSubDir)
-        # end if
-    # end for
 
-    # if no training sub-directories were found, show an error message and return false
+    # 학습 서브 디렉터리가 보이지 않으면 오류 메시지를 보여주고 false 리턴
     if len(trainingSubDirs) == 0:
-        print("ERROR: there don't seem to be any training image sub-directories in " + TRAINING_IMAGES_DIR)
-        print("Did you make a separare image sub-directory for each classification type?")
+        print("에러: " + TRAINING_IMAGES_DIR + "에 학습시킬 분류된 서브 이미지 파일이 보이지 않습니다.")
+        print("학습할 데이터 이미지 파일을 구분할 종류에 맞게 끔 파일을 분리하여 만드세요.")
         return False
-    # end if
 
-    # populate the number of training images in each training sub-directory
+    # 각 학습 서브 디렉토리에 교육 이미지들을 채우기.
     for trainingSubDir in trainingSubDirs:
-        # count how many images are in the current training sub-directory
+        # 현재 서브 디렉토리에 이미지가 몇개 있는지 확인하기
         for fileName in os.listdir(trainingSubDir.loc):
             if fileName.endswith(".jpg"):
                 trainingSubDir.numImages += 1
-            # end if
-        # end if
-    # end for
 
-    # if any training sub-directory has less than the min required number of training images, show an error message and return false
+    # 학습 서브 디렉토리에 필요한 최소 학습 이미지 수보다 부족하면 오류 메시지를 보여주고 false 리턴
     for trainingSubDir in trainingSubDirs:
         if trainingSubDir.numImages < MIN_NUM_IMAGES_REQUIRED_FOR_TRAINING:
-            print("ERROR: there are less than the required " + str(MIN_NUM_IMAGES_REQUIRED_FOR_TRAINING) + " images in " + trainingSubDir.loc)
-            print("Did you populate each training sub-directory with images?")
+            print("에러: 최소 학습 이미지 데이터 수인 " + str(MIN_NUM_IMAGES_REQUIRED_FOR_TRAINING) + " 개가 필요합니다. - " + trainingSubDir.loc)
+            print("학습 이미지가 부족하지 않게 충분히 채워 넣으세요.")
             return False
-        # end if
-    # end for
 
-    # if any training sub-directory has less than the recommended number of training images, show a warning (but don't return false)
+    # 학습 서브 디렉토리가 권장한 학습 이미지 수보다 작을 경우 경고 표시
     for trainingSubDir in trainingSubDirs:
         if trainingSubDir.numImages < MIN_NUM_IMAGES_SUGGESTED_FOR_TRAINING:
-            print("WARNING: there are less than the suggested " + str(MIN_NUM_IMAGES_SUGGESTED_FOR_TRAINING) + " images in " + trainingSubDir.loc)
-            print("More images should be added to this directory for acceptable training results")
-            # note we do not return false here b/c this is a warning, not an error
-        # end if
-    # end for
+            print("주의: 적정 학습 이미지 데이터 수인 " + str(MIN_NUM_IMAGES_SUGGESTED_FOR_TRAINING) + " 개가 필요합니다. - " + trainingSubDir.loc)
+            print("더 좋은 결과를 학습하기 위해 이미지 추가가 필요로 합니다.")
 
-    # if the test images directory does not exist, show and error message and bail
+    # 테스트 디렉토리에 이미지가 존재하지 않을 경우, 에러 메세지를 보여주고 false 리턴
     if not os.path.exists(TEST_IMAGES_DIR):
         print('')
-        print('ERROR: TEST_IMAGES_DIR "' + TEST_IMAGES_DIR + '" does not seem to exist')
-        print('Did you break out some test images?')
+        print('에러: TEST_IMAGES_DIR "' + TEST_IMAGES_DIR + '" 에 테스트 할 이미지 파일이 보이지 않습니다.')
+        print('테스트 이미지를 확인해 주세요.')
         print('')
         return False
-    # end if
 
-    # count how many images are in the test images directory
+    # 테스트 이미지 디렉토리에 있는 이미지 수 카운트
     numImagesInTestDir = 0
     for fileName in os.listdir(TEST_IMAGES_DIR):
         if fileName.endswith(".jpg"):
             numImagesInTestDir += 1
-        # end if
-    # end for
 
-    # if there are not enough images in the test images directory, show an error and return false
+    # 테스트 이미지 디렉토리에 이미지가 충분하지 않으면 에러 메시지를 보여주고 false 리턴
     if numImagesInTestDir < MIN_NUM_IMAGES_REQUIRED_FOR_TESTING:
-        print("ERROR: there are not at least " + str(MIN_NUM_IMAGES_REQUIRED_FOR_TESTING) + " images in " + TEST_IMAGES_DIR)
-        print("Did you break out some test images?")
+        print("에러: 테스트 하기에 최소 필요로 하는 이미지 수인 " + str(MIN_NUM_IMAGES_REQUIRED_FOR_TESTING) + " 개가 필요합니다. - " + TEST_IMAGES_DIR)
+        print("테스트 이미지를 충분하게 넣어 주세요.")
         return False
-    # end if
 
     return True
-# end function
 
 #######################################################################################################################
 def prepare_file_system():
-    # Setup the directory we'll write summaries to for TensorBoard
+    # TensorBoard에 대해 요약한 자료를 넣을 디렉토리 설정
+    # tf.gfile.Exists() : 경로의 존재 여부 확인
     if tf.gfile.Exists(TENSORBOARD_DIR):
+        # tf.gfile.DeleteRecursively(): 들어가 있는 로그 파일 삭제
         tf.gfile.DeleteRecursively(TENSORBOARD_DIR)
-    # end if
+
+    # tf.gfile.MakeDirs(): 디렉터리 생성.
     tf.gfile.MakeDirs(TENSORBOARD_DIR)
     if INTERMEDIATE_STORE_FREQUENCY > 0:
         makeDirIfDoesNotExist(INTERMEDIATE_OUTPUT_GRAPHS_DIR)
