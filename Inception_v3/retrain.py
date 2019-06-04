@@ -138,27 +138,25 @@ ARCHITECTURE = 'inception_v3'
 def main():
     print("프로그램 시작...")
 
-    # tf.logging.set_verbosity(tf.logging.INFO)
+    tf.logging.set_verbosity(tf.logging.INFO)
 
     # 학습 디렉토리가 없을 때 에러 표시문:
     if not checkIfNecessaryPathsAndFilesExist():
         return
 
-    # prepare necessary directories that can be used during training
     # 학습 중에 사용할 수 있는 필수 디렉토리 준비.
     prepare_file_system()
 
-    # Gather information about the model architecture we'll be using.
+    # 사용할 모델 아키텍처(inception_v3)에 대한 정보 확인하기.
     model_info = create_model_info(ARCHITECTURE)
     if not model_info:
-        tf.logging.error('Did not recognize architecture flag')
+        tf.logging.error('아키텍쳐를 확인할 수 없습니다.')
         return -1
-    # end if
 
-    # download the model if necessary, then create the model graph
-    print("downloading model (if necessary) . . .")
+    # 모델이 없으면 다운로드한 다음 모델 그래프를 생성
+    print("모델 다운로드...")
     downloadModelIfNotAlreadyPresent(model_info['data_url'])
-    print("creating model graph . . .")
+    print("모델 그래프 생성...")
     graph, bottleneck_tensor, resized_image_tensor = (create_model_graph(model_info))
 
     # Look at the folder structure, and create lists of all the images.
@@ -387,48 +385,41 @@ def prepare_file_system():
 
     # tf.gfile.MakeDirs(): 디렉터리 생성.
     tf.gfile.MakeDirs(TENSORBOARD_DIR)
+    # 디렉토리 하위 폴더(train, validation)가 존재 하지 않을 경우 폴더 생성
     if INTERMEDIATE_STORE_FREQUENCY > 0:
         makeDirIfDoesNotExist(INTERMEDIATE_OUTPUT_GRAPHS_DIR)
-    # end if
     return
-# end function
 
 #######################################################################################################################
 def makeDirIfDoesNotExist(dir_name):
-    """
-    Makes sure the folder exists on disk.
-    Args:
-        dir_name: Path string to the folder we want to create.
-    """
+    # 디렉토리에 하위 폴더가 존재하는지 확인
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
-    # end if
-# end function
 
 #######################################################################################################################
 def create_model_info(architecture):
     """
-    Given the name of a model architecture, returns information about it.
+    모델 아키텍처의 이름을 고려하여, 그것에 대한 정보를 반환한다.
 
-    There are different base image recognition pretrained models that can be
-    retrained using transfer learning, and this function translates from the name
-    of a model to the attributes that are needed to download and train with it.
+    전송 학습을 이용해 재교육할 수 있는 베이스 이미지 인식의 사전 학습된 모델이 서로 다르며,
+    이 기능은 모델 이름에서 모델과 함께 다운로드하여 학습하는 데 필요한 속성으로 변환된다.
 
     Args:
-        architecture: Name of a model architecture.
+        아키텍쳐: 사용하려는 모델 아키텍쳐 이름
 
     Returns:
-        Dictionary of information about the model, or None if the name isn't recognized
+        모델에 대한 정보 또는 이름이 인식되지 않음.
 
     Raises:
-        ValueError: If architecture name is unknown.
+        ValueError: 아키텍쳐 이름이 옳지 않은 경우
     """
+    # architecture.lower() : architecture를 소문자로 변환하여 반환
     architecture = architecture.lower()
     is_quantized = False
+    # 'inception_v3'일 경우
     if architecture == 'inception_v3':
-        # pylint: disable=line-too-long
+        # pylint : Python 코드의 오류를 검사하고 적절한 Python 코딩 패턴을 권장하며 널리 사용되는 도구 (enable=line-too-long)
         data_url = 'http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz'
-        # pylint: enable=line-too-long
         bottleneck_tensor_name = 'pool_3/_reshape:0'
         bottleneck_tensor_size = 2048
         input_width = 299
@@ -438,109 +429,59 @@ def create_model_info(architecture):
         model_file_name = 'classify_image_graph_def.pb'
         input_mean = 128
         input_std = 128
-    elif architecture.startswith('mobilenet_'):
-        parts = architecture.split('_')
-        if len(parts) != 3 and len(parts) != 4:
-            tf.logging.error("Couldn't understand architecture name '%s'", architecture)
-            return None
-        # end if
-        version_string = parts[1]
-        if (version_string != '1.0' and version_string != '0.75' and version_string != '0.50' and version_string != '0.25'):
-            tf.logging.error(""""The Mobilenet version should be '1.0', '0.75', '0.50', or '0.25', but found '%s' for architecture '%s'""", version_string, architecture)
-            return None
-        # end if
-        size_string = parts[2]
-        if (size_string != '224' and size_string != '192' and size_string != '160' and size_string != '128'):
-            tf.logging.error("""The Mobilenet input size should be '224', '192', '160', or '128', but found '%s' for architecture '%s'""", size_string, architecture)
-            return None
-        # end if
-        if len(parts) == 3:
-            is_quantized = False
-        else:
-            if parts[3] != 'quantized':
-                tf.logging.error(
-                    "Couldn't understand architecture suffix '%s' for '%s'", parts[3], architecture)
-                return None
-            is_quantized = True
-        # end if
-
-        if is_quantized:
-            data_url = 'http://download.tensorflow.org/models/mobilenet_v1_'
-            data_url += version_string + '_' + size_string + '_quantized_frozen.tgz'
-            bottleneck_tensor_name = 'MobilenetV1/Predictions/Reshape:0'
-            resized_input_tensor_name = 'Placeholder:0'
-            model_dir_name = ('mobilenet_v1_' + version_string + '_' + size_string + '_quantized_frozen')
-            model_base_name = 'quantized_frozen_graph.pb'
-        else:
-            data_url = 'http://download.tensorflow.org/models/mobilenet_v1_'
-            data_url += version_string + '_' + size_string + '_frozen.tgz'
-            bottleneck_tensor_name = 'MobilenetV1/Predictions/Reshape:0'
-            resized_input_tensor_name = 'input:0'
-            model_dir_name = 'mobilenet_v1_' + version_string + '_' + size_string
-            model_base_name = 'frozen_graph.pb'
-        # end if
-
-        bottleneck_tensor_size = 1001
-        input_width = int(size_string)
-        input_height = int(size_string)
-        input_depth = 3
-        model_file_name = os.path.join(model_dir_name, model_base_name)
-        input_mean = 127.5
-        input_std = 127.5
-    else:
-        tf.logging.error("Couldn't understand architecture name '%s'", architecture)
-        raise ValueError('Unknown architecture', architecture)
-    # end if
 
     return {'data_url': data_url, 'bottleneck_tensor_name': bottleneck_tensor_name, 'bottleneck_tensor_size': bottleneck_tensor_size,
             'input_width': input_width, 'input_height': input_height, 'input_depth': input_depth, 'resized_input_tensor_name': resized_input_tensor_name,
             'model_file_name': model_file_name, 'input_mean': input_mean, 'input_std': input_std, 'quantize_layer': is_quantized, }
-# end function
 
 #######################################################################################################################
 def downloadModelIfNotAlreadyPresent(data_url):
     """
-    Download and extract model tar file.
+    tar 파일에서 모델을 다운로드 및 추출.
 
-    If the pretrained model we're using doesn't already exist, this function downloads it from the TensorFlow.org website and unpacks it into a directory.
+    만약 사용하려는 모델이 존재하지 않으면, TensorFlow.org 웹사이트에서 모델을 다운로드하여 디렉토리에 압축 해제.
 
     Args:
-        data_url: Web location of the tar file containing the pretrained model.
+        data_url: 모델이 들어 있는 tar 파일의 웹 위치.
     """
+    # 아키텍쳐 다운받을 디렉토리 장소
     dest_directory = MODEL_DIR
+    # 디렉토리 존재 하지 않을 경우
     if not os.path.exists(dest_directory):
+        # 디렉토리 생성
         os.makedirs(dest_directory)
-    # end if
+
+    # 다운받는 주소 마지막 부분 - 모델이름
     filename = data_url.split('/')[-1]
     filepath = os.path.join(dest_directory, filename)
+
     if not os.path.exists(filepath):
-        # nested function
+        # 파일 다운 현황 출력
         def _progress(count, block_size, total_size):
-            sys.stdout.write('\r>> Downloading %s %.1f%%' % (filename, float(count * block_size) / float(total_size) * 100.0))
+            sys.stdout.write('\r>> 다운로드중 %s %.1f%%' % (filename, float(count * block_size) / float(total_size) * 100.0))
             sys.stdout.flush()
-        # end def
+
 
         filepath, _ = urllib.request.urlretrieve(data_url, filepath, _progress)
         print()
+        # os.stat() = 파일 정보 가져옴
         statinfo = os.stat(filepath)
-        tf.logging.info('Successfully downloaded ' + str(filename) + ', statinfo.st_size = ' + str(statinfo.st_size) + ' bytes')
-        print('Extracting file from ', filepath)
+        tf.logging.info('다운로드 성공 ' + str(filename) + ', 파일 크기 = ' + str(statinfo.st_size) + ' bytes')
+        print('파일 추출 : ', filepath)
         tarfile.open(filepath, 'r:gz').extractall(dest_directory)
     else:
-        print('Not extracting or downloading files, model already present in disk')
-    # end if
-# end function
+        print('모델이 대상 디렉토리에 존재하지 않아 추출되지 않았거나 다운로드 되지 않았습니다.')
 
 #######################################################################################################################
 def create_model_graph(model_info):
     """"
-    Creates a graph from saved GraphDef file and returns a Graph object.
+    저장된 그래프 디렉토리에서 그래프를 생성하고 그래프 객체를 리턴.
 
     Args:
-        model_info: Dictionary containing information about the model architecture.
+        model_info: 모델 아키텍처에 대한 정보
 
     Returns:
-        Graph holding the trained Inception network, and various tensors we'll be manipulating.
+        학습된 인셉션 네트워크를 담고 있는 그래프와 여러 텐서.
     """
     with tf.Graph().as_default() as graph:
         model_path = os.path.join(MODEL_DIR, model_info['model_file_name'])
