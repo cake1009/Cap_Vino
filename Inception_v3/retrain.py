@@ -156,11 +156,12 @@ def main():
     # 모델이 없으면 다운로드한 다음 모델 그래프를 생성
     print("모델 다운로드...")
     downloadModelIfNotAlreadyPresent(model_info['data_url'])
+    # 저장된 그래프 디렉토리에서 그래프를 생성하고 그래프 객체를 리턴.
     print("모델 그래프 생성...")
     graph, bottleneck_tensor, resized_image_tensor = (create_model_graph(model_info))
 
-    # Look at the folder structure, and create lists of all the images.
-    print("creating image lists . . .")
+    # 폴더 구조를 보고 모든 이미지의 목록을 생성.
+    print("이미지 리스트 생성...")
     image_lists = create_image_lists(TRAINING_IMAGES_DIR, TESTING_PERCENTAGE, VALIDATION_PERCENTAGE)
     class_count = len(image_lists.keys())
     if class_count == 0:
@@ -483,99 +484,95 @@ def create_model_graph(model_info):
     Returns:
         학습된 인셉션 네트워크를 담고 있는 그래프와 여러 텐서.
     """
+    # tf.Graph(): 데이터 흐름 그래프로 표시되는 TensorFlow 연산.
+    # as_default(): 그래프를 기본 그래프로 만드는 context 관리자를 리턴.
     with tf.Graph().as_default() as graph:
         model_path = os.path.join(MODEL_DIR, model_info['model_file_name'])
         print('Model path: ', model_path)
+        # gfile.FastGFile(): 쓰레드 잠금이 없는 파일 I/O
         with gfile.FastGFile(model_path, 'rb') as f:
+            # tf.GraphDef(): 프로토콜 이미지 
             graph_def = tf.GraphDef()
+            # ParseFromString(): 주어진 문자열에서 메시지를 구문 분석 
             graph_def.ParseFromString(f.read())
+            # tf.import_graph_def(): graph_def에서 현재 기본 Graph로 그래프 가져오기(비평가된 인수)
             bottleneck_tensor, resized_input_tensor = (tf.import_graph_def(graph_def, name='', return_elements=[model_info['bottleneck_tensor_name'], model_info['resized_input_tensor_name'],]))
-        # end with
-    # end with
+
     return graph, bottleneck_tensor, resized_input_tensor
-# end function
 
 #######################################################################################################################
 def create_image_lists(image_dir, testing_percentage, validation_percentage):
     """
-    Builds a list of training images from the file system.
+    파일 시스템에서 학습 이미지 목록 생성
 
-    Analyzes the sub folders in the image directory, splits them into stable
-    training, testing, and validation sets, and returns a data structure
-    describing the lists of images for each label and their paths.
+    이미지 디렉토리의 하위 폴더를 분석하고 이를 training, test 및 validation 셋으로 분할한 다음 
+    각 라벨과 해당 경로에 대한 이미지 리스트를 설명하는 데이터 구조를 리턴.
 
     Args:
-        image_dir: String path to a folder containing subfolders of images.
-        testing_percentage: Integer percentage of the images to reserve for tests.
-        validation_percentage: Integer percentage of images reserved for validation.
+        image_dir: 이미지의 하위 폴더를 포함하는 폴더의 문자열 경로.
+        testing_percentage: 테스트를 위해 사용될 이미지 비율.
+        validation_percentage: validaion을 위해 사용될 이미지 비율.
 
     Returns:
-        A dictionary containing an entry for each label subfolder, with images split
-        into training, testing, and validation sets within each label.
+        하위 폴더의 항목에 포함된 딕셔너리 중 training, test 및 validation set으로 이미지를 분할.
     """
 
-    # if the image directory does not exist, log an error and bail
+    # 만일 이미지 파일 디렉토리가 존재하지 않으면 에러 처리 후 리턴.
     if not gfile.Exists(image_dir):
-        tf.logging.error("Image directory '" + image_dir + "' not found.")
+        tf.logging.error("이미지 파일 '" + image_dir + "'를 찾지 못하였습니다.")
         return None
-    # end if
 
-    # create an empty dictionary to store the results
+    # 결과를 저장하기 위해 빈 폴더 생성.
     result = {}
 
-    # get a list of the sub-directories of the image directory
+    # 이미지 폴더 하위 폴더 목록 가져오기
     sub_dirs = [x[0] for x in gfile.Walk(image_dir)]
 
-    # for each directory in the sub-directories list . . .
+    # 각 이미지 폴더 안 하위 폴더 리스트 확인
     is_root_dir = True
     for sub_dir in sub_dirs:
-        # if we're on the 1st (root) directory, mark our boolean for that as false for the next time around and go back to the top of the for loop
+        # 하위 폴더를 체크했는지 확인하기 위한 부분. (폴더를 체크하면 False로 변경)
         if is_root_dir:
             is_root_dir = False
             continue
-        # end if
-
+        # os.path.basename(): 경로의 최종 구성 요소 return
         dir_name = os.path.basename(sub_dir)
         if dir_name == image_dir:
             continue
-        # end if
-
-        # ToDo: This section should be refactored.  The right way to do this would be to get a list of the files that are
-        # ToDo: there then append (extend) those, not to get the name except the extension, then append an extension,
-        # ToDo: this (current) way is error prone of the original file has an upper case or mixed case extension
 
         extensions = ['jpg', 'jpeg']
         file_list = []
-        tf.logging.info("Looking for images in '" + dir_name + "'")
+        tf.logging.info("'" + dir_name + "에 있는 이미지 찾는 중...'")
         for extension in extensions:
+            # os.path.join(): 두 개 이상의 이름 구성 요소를 결합한 후 디폴트 값으로 '/'가 이름 중간에 삽입된다.
             file_glob = os.path.join(image_dir, dir_name, '*.' + extension)
+            # .extend(A): A 요소 추가
+            # gfile.Glob(): 지정된 패턴과 일치하는 파일 return 
             file_list.extend(gfile.Glob(file_glob))
-        # end for
 
-        # if the file list is empty at this point, log a warning and bail
+        # 이 시점에서 파일 목록이 비어 있는 경우 경고 로그 및 에러 메시지 표시
         if not file_list:
-            tf.logging.warning('No files found')
+            tf.logging.warning('파일을 찾을 수 없습니다')
             continue
-        # end if
 
-        # if the length of the file list is less than 20 or more than the max number, log an applicable warning (do not return, however)
+        # 파일 리스트 길이가 최대값보다 20보다 작거나 더 크면 해당 경고 로그(return X).
         if len(file_list) < 20:
-            tf.logging.warning('WARNING: Folder has less than 20 images, which may cause issues.')
+            tf.logging.warning('경고: 이미지가 20장 미만입니다. 이미지를 더 채워 넣어주세요.')
         elif len(file_list) > MAX_NUM_IMAGES_PER_CLASS:
-            tf.logging.warning('WARNING: Folder {} has more than {} images. Some images will never be selected.'.format(dir_name, MAX_NUM_IMAGES_PER_CLASS))
-        # end if
+            tf.logging.warning('경고: 폴더 {} 에 있는 이미지가 {} 보다 큽니다. 몇몇 이미지가 해당되지 않을 수 있습니다.'.format(dir_name, MAX_NUM_IMAGES_PER_CLASS))
 
+        # re.sub(pattern, repl, string): string에서 pattern과 매치하는 텍스트를 repl로 치환한다
         label_name = re.sub(r'[^a-z0-9]+', ' ', dir_name.lower())
         training_images = []
         testing_images = []
         validation_images = []
+
         for file_name in file_list:
             base_name = os.path.basename(file_name)
-            # 이미지를 넣을 수 있도록 디코딩할 때 파일 이름에 '_noash_' 뒤에 있는 다른 모든 것을 원하며, 데이터 세트 작성자는 서로 가까운 변형인 사진을 그룹화하는 방법을 가지고 있다. 
-            # 예를 들어, 이것은 식물 질병 데이터 세트에서 동일한 잎의 여러 사진을 그룹화하기 위해 사용된다.
+            # 이미지 파일 속 여러 중복되는 데이터가 있을 때 그룹화하기 위해 쓰여지는 코드
             hash_name = re.sub(r'_nohash_.*$', '', file_name)
-            # 이것은 좀 신기해 보이지만, 우리는 이 파일이 훈련, 시험 또는 유효성 검사 세트로 들어가야 하는지 결정해야 하며, 우리는 나중에 더 많은 파일이 추가되더라도 기존 파일을 동일한 세트로 유지하기를 원한다.  
-            # 그러기 위해서는 파일 이름 그 자체만으로 안정적인 결정 방법이 필요하기 때문에, 그것을 해시하고 나서 그것을 이용하여 그것을 할당하는 데 사용하는 확률 평가표를 생성한다.
+            # 파일이 train, test, validation set로 들어가야 하는지 결정해야 하며, 나중에 더 많은 파일이 추가되더라도 기존 파일을 동일한 세트로 유지하기 위해.
+            # 이를 유지하기 위해서 파일 이름을 안정적으로 결정해야 함으로 해시하고 나서 이를 이용하여 이름을 할당하는 데 사용하는 확률 평가표를 생성한다.
             hash_name_hashed = hashlib.sha1(compat.as_bytes(hash_name)).hexdigest()
             percentage_hash = ((int(hash_name_hashed, 16) % (MAX_NUM_IMAGES_PER_CLASS + 1)) * (100.0 / MAX_NUM_IMAGES_PER_CLASS))
             if percentage_hash < validation_percentage:
@@ -584,10 +581,10 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
                 testing_images.append(base_name)
             else:
                 training_images.append(base_name)
-            # end if
+
         result[label_name] = {'dir': dir_name, 'training': training_images, 'testing': testing_images, 'validation': validation_images,}
+
     return result
-# end function
 
 #######################################################################################################################
 def add_jpeg_decoding(input_width, input_height, input_depth, input_mean, input_std):
