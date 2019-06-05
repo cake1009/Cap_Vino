@@ -50,19 +50,19 @@ public class LoadingActivity extends AppCompatActivity {
 
     protected void onStart() {
         super.onStart();
-        handler.postDelayed(new Runnable() {
+        /*handler.postDelayed(new Runnable() {
             public void run() {
                 databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                             Log.d("tag", dataSnapshot.child("output").getValue(String.class));
-                            if (Objects.equals(dataSnapshot.child("check").getValue(), true)) {
+                            *//*if (Objects.equals(dataSnapshot.child("check").getValue(), true)) {
                                 output = Objects.requireNonNull(dataSnapshot.child("output").getValue()).toString();
                                 Intent intent = new Intent(LoadingActivity.this, ResultActivity.class);
                                 intent.putExtra("output", output);
                                 startActivity(intent);
                                 finish();
-                        }
+                        }*//*
                     }
 
                     @Override
@@ -71,7 +71,7 @@ public class LoadingActivity extends AppCompatActivity {
                     }
                 });
             }
-        }, 1000);
+        }, 1000);*/
 
         databaseReference.addChildEventListener(new ChildEventListener() {
             @Override
@@ -81,7 +81,7 @@ public class LoadingActivity extends AppCompatActivity {
 
             @Override
             public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-                //Log.d("tag", dataSnapshot.child("output").getValue(String.class));
+                Log.d("tag", dataSnapshot.child("output").getValue(String.class));
             }
 
             @Override
