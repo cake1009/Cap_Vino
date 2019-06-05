@@ -13,11 +13,11 @@ def slice_image(target_image,stored_dir):
     orig=image.copy()  
 
     def make_edged(image) :
-        #gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)  #RGB To Gray Scale
+        gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)  #RGB To Gray Scale
         #cv2.imshow("Title",gray)
         
     
-        #blurred=cv2.GaussianBlur(gray,(5,5),0)  #(5,5) is the kernel size and 0 is sigma that determines the amount of blur
+        blurred=cv2.GaussianBlur(gray,(5,5),0)  #(5,5) is the kernel size and 0 is sigma that determines the amount of blur
         #cv2.imshow("Blur",blurred)
 
         edged=cv2.Canny(blurred, 30, 50)  #30 MinThreshold and 50 is the MaxThreshold
