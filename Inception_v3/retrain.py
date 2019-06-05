@@ -120,7 +120,7 @@ RANDOM_BRIGHTNESS = 0
 # https://research.googleblog.com/2017/06/mobilenets-open-source-models-for.html 참고
 
 # 높은 정확도를 사용하지만 상대적으로 크고 느린 Inception v3 모델 아키텍처를 사용한다.
-# 좋은 교육 데이터를 수집했는지를 검증하기 위해 이 작업부터 시작하는 것이 좋으나, 연구 제한 플랫폼에 배치하려면 MobildNet 모델로 "--architecture" 플래그를 사용할 수 있다.
+# 좋은 학습 데이터를 수집했는지를 검증하기 위해 이 작업부터 시작하는 것이 좋으나, 연구 제한 플랫폼에 배치하려면 MobildNet 모델로 "--architecture" 플래그를 사용할 수 있다.
 
 # 플로팅 포인트 버전의 moupenet을 실행하는 명령 예:
 # ARCHITECTURE = 'mobilenet_1.0_224'
@@ -163,54 +163,55 @@ def main():
     # 폴더 구조를 보고 모든 이미지의 목록을 생성.
     print("이미지 리스트 생성...")
     image_lists = create_image_lists(TRAINING_IMAGES_DIR, TESTING_PERCENTAGE, VALIDATION_PERCENTAGE)
+    # .keys(): image_lists key만을 모아서 list 객체를 리턴.
     class_count = len(image_lists.keys())
     if class_count == 0:
-        tf.logging.error('No valid folders of images found at ' + TRAINING_IMAGES_DIR)
+        tf.logging.error( TRAINING_IMAGES_DIR + ' 위치에서 올바른 이미지 파일을 찾지 못하였습니다.')
         return -1
-    # end if
-    if class_count == 1:
-        tf.logging.error('Only one valid folder of images found at ' + TRAINING_IMAGES_DIR + ' - multiple classes are needed for classification.')
-        return -1
-    # end if
 
-    # determinf if any of the distortion command line flags have been set
+    if class_count == 1:
+        tf.logging.error(TRAINING_IMAGES_DIR + ' 위치에서 올바른 이미지 폴더를 하나만 찾았습니다 - 분류하기 위해서는 여러 이미지 폴더가 필요합니다.')
+        return -1
+
+    # 왜곡 명령 라인 플래그가 설정되었는지 확인
     doDistortImages = False
     if (FLIP_LEFT_RIGHT == True or RANDOM_CROP != 0 or RANDOM_SCALE != 0 or RANDOM_BRIGHTNESS != 0):
         doDistortImages = True
-    # end if
 
-    print("starting session . . .")
+    print("세션 시작...")
     with tf.Session(graph=graph) as sess:
-        # Set up the image decoding sub-graph.
-        print("performing jpeg decoding . . .")
+        # 이미지 디코딩 서브 그래프 설정.
+        print("jpeg/jpg 디코딩 시작...")
         jpeg_data_tensor, decoded_image_tensor = add_jpeg_decoding( model_info['input_width'],
                                                                     model_info['input_height'],
                                                                     model_info['input_depth'],
                                                                     model_info['input_mean'],
                                                                     model_info['input_std'])
-        print("caching bottlenecks . . .")
+        print("디코딩 데이터 캐싱...")
         distorted_jpeg_data_tensor = None
         distorted_image_tensor = None
+        # 이미지 왜곡을 했는지 확인하는 작업  
+        # -> 왜곡을 함으로써 같은 이미지 파일에 여러 왜곡이 일어나는 상황(플립, 크롭, 스케일 등)을 만듦으로써 정확성을 높이기 위하여 사용
         if doDistortImages:
-            # We will be applying distortions, so setup the operations we'll need.
+            # 이미지 왜곡을 발생
             (distorted_jpeg_data_tensor, distorted_image_tensor) = add_input_distortions(FLIP_LEFT_RIGHT, RANDOM_CROP, RANDOM_SCALE,
-                                                                                         RANDOM_BRIGHTNESS, model_info['input_width'],
-                                                                                         model_info['input_height'], model_info['input_depth'],
-                                                                                         model_info['input_mean'], model_info['input_std'])
+                                                                                        RANDOM_BRIGHTNESS, model_info['input_width'],
+                                                                                        model_info['input_height'], model_info['input_depth'],
+                                                                                        model_info['input_mean'], model_info['input_std'])
         else:
             # We'll make sure we've calculated the 'bottleneck' image summaries and
             # cached them on disk.
             cache_bottlenecks(sess, image_lists, TRAINING_IMAGES_DIR, BOTTLENECK_DIR, jpeg_data_tensor, decoded_image_tensor,
-                              resized_image_tensor, bottleneck_tensor, ARCHITECTURE)
+                            resized_image_tensor, bottleneck_tensor, ARCHITECTURE)
         # end if
 
         # Add the new layer that we'll be training.
         print("adding final training layer . . .")
         (train_step, cross_entropy, bottleneck_input, ground_truth_input, final_tensor) = add_final_training_ops(len(image_lists.keys()),
-                                                                                                                 FINAL_TENSOR_NAME,
-                                                                                                                 bottleneck_tensor,
-                                                                                                                 model_info['bottleneck_tensor_size'],
-                                                                                                                 model_info['quantize_layer'])
+                                                                                                                FINAL_TENSOR_NAME,
+                                                                                                                bottleneck_tensor,
+                                                                                                                model_info['bottleneck_tensor_size'],
+                                                                                                                model_info['quantize_layer'])
         # Create the operations we need to evaluate the accuracy of our new layer.
         print("adding eval ops for final training layer . . .")
         evaluation_step, prediction = add_evaluation_step(final_tensor, ground_truth_input)
@@ -232,13 +233,13 @@ def main():
             # time with distortions applied, or from the cache stored on disk.
             if doDistortImages:
                 (train_bottlenecks, train_ground_truth) = get_random_distorted_bottlenecks(sess, image_lists, TRAIN_BATCH_SIZE, 'training',
-                                                                                           TRAINING_IMAGES_DIR, distorted_jpeg_data_tensor,
-                                                                                           distorted_image_tensor, resized_image_tensor, bottleneck_tensor)
+                                                                                        TRAINING_IMAGES_DIR, distorted_jpeg_data_tensor,
+                                                                                        distorted_image_tensor, resized_image_tensor, bottleneck_tensor)
             else:
                 (train_bottlenecks, train_ground_truth, _) = get_random_cached_bottlenecks(sess, image_lists, TRAIN_BATCH_SIZE, 'training',
-                                                                                           BOTTLENECK_DIR, TRAINING_IMAGES_DIR, jpeg_data_tensor,
-                                                                                           decoded_image_tensor, resized_image_tensor, bottleneck_tensor,
-                                                                                           ARCHITECTURE)
+                                                                                        BOTTLENECK_DIR, TRAINING_IMAGES_DIR, jpeg_data_tensor,
+                                                                                        decoded_image_tensor, resized_image_tensor, bottleneck_tensor,
+                                                                                        ARCHITECTURE)
             # end if
 
             # Feed the bottlenecks and ground truth into the graph, and run a training
@@ -276,8 +277,8 @@ def main():
         # We've completed all our training, so run a final test evaluation on some new images we haven't used before
         print("running testing . . .")
         test_bottlenecks, test_ground_truth, test_filenames = (get_random_cached_bottlenecks(sess, image_lists, TEST_BATCH_SIZE, 'testing', BOTTLENECK_DIR,
-                                                                                             TRAINING_IMAGES_DIR, jpeg_data_tensor, decoded_image_tensor, resized_image_tensor,
-                                                                                             bottleneck_tensor, ARCHITECTURE))
+                                                                                            TRAINING_IMAGES_DIR, jpeg_data_tensor, decoded_image_tensor, resized_image_tensor,
+                                                                                            bottleneck_tensor, ARCHITECTURE))
         test_accuracy, predictions = sess.run([evaluation_step, prediction], feed_dict={bottleneck_input: test_bottlenecks, ground_truth_input: test_ground_truth})
         tf.logging.info('Final test accuracy = %.1f%% (N=%d)' % (test_accuracy * 100, len(test_bottlenecks)))
 
@@ -334,7 +335,7 @@ def checkIfNecessaryPathsAndFilesExist():
         print("학습할 데이터 이미지 파일을 구분할 종류에 맞게 끔 파일을 분리하여 만드세요.")
         return False
 
-    # 각 학습 서브 디렉토리에 교육 이미지들을 채우기.
+    # 각 학습 서브 디렉토리에 학습 이미지들을 채우기.
     for trainingSubDir in trainingSubDirs:
         # 현재 서브 디렉토리에 이미지가 몇개 있는지 확인하기
         for fileName in os.listdir(trainingSubDir.loc):
@@ -402,7 +403,7 @@ def create_model_info(architecture):
     """
     모델 아키텍처의 이름을 고려하여, 그것에 대한 정보를 반환한다.
 
-    전송 학습을 이용해 재교육할 수 있는 베이스 이미지 인식의 사전 학습된 모델이 서로 다르며,
+    전송 학습을 이용해 재학습할 수 있는 베이스 이미지 인식의 사전 학습된 모델이 서로 다르며,
     이 기능은 모델 이름에서 모델과 함께 다운로드하여 학습하는 데 필요한 속성으로 변환된다.
 
     Args:
@@ -590,15 +591,16 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
 def add_jpeg_decoding(input_width, input_height, input_depth, input_mean, input_std):
     """
     Adds operations that perform JPEG decoding and resizing to the graph..
+    디코딩 및 리사이즈 된 JPEG 파일을 그래프에 추가
     Args:
-        input_width: Desired width of the image fed into the recognizer graph.
-        input_height: Desired width of the image fed into the recognizer graph.
-        input_depth: Desired channels of the image fed into the recognizer graph.
-        input_mean: Pixel value that should be zero in the image for the graph.
-        input_std: How much to divide the pixel values by before recognition.
+        input_width: 그래프에 입력된 이미지가 원하는 너비. (현재값 299)
+        input_height: 그래프에 입력된 이미지가 원하는 높이. (현재값 299)
+        input_depth: 그래프에 입력된 이미지가 원하는 채널. (현재값 3)
+        input_mean: 그래프 이미지에서 0이어야 하는 픽셀 값. (현재값 128)
+        input_std: recognition 전 픽셀 값을 나눈 값. (현재값 128)
 
     Returns:
-        Tensors for the node to feed JPEG data into, and the output of the preprocessing steps.
+        JPEG 데이터를 제공하는 텐서와 사전 처리 단계 출력.
     """
     jpeg_data = tf.placeholder(tf.string, name='DecodeJPGInput')
     decoded_image = tf.image.decode_jpeg(jpeg_data, channels=input_depth)
@@ -610,42 +612,20 @@ def add_jpeg_decoding(input_width, input_height, input_depth, input_mean, input_
     offset_image = tf.subtract(resized_image, input_mean)
     mul_image = tf.multiply(offset_image, 1.0 / input_std)
     return jpeg_data, mul_image
-# end function
 
 #######################################################################################################################
-def add_input_distortions(flip_left_right, random_crop, random_scale, random_brightness, input_width, input_height,
-                          input_depth, input_mean, input_std):
+def add_input_distortions(flip_left_right, random_crop, random_scale, random_brightness, 
+                        input_width, input_height, input_depth, input_mean, input_std):
     """
-    Creates the operations to apply the specified distortions.
+    특정 왜곡을 적용시키기 위한 작업.
 
-    During training it can help to improve the results if we run the images
-    through simple distortions like crops, scales, and flips. These reflect the
-    kind of variations we expect in the real world, and so can help train the
-    model to cope with natural data more effectively. Here we take the supplied
-    parameters and construct a network of operations to apply them to an image.
+    학습 하는 동안 크롭, 스케일, 플립과 같은 왜곡을 통하여 이미지를 실행하면 정확성을 높이는데 도움이 된다.
+    사용자들이 실제로 사용할 때 높은 품질의 이미지만을 제공하지 않기에 이 왜곡은 학습 모델이 여러 데이터에 대해 효과적으로 대처하도록 만든다.
 
-    Cropping
-    ~~~~~~~~
+    크롭
 
-    Cropping is done by placing a bounding box at a random position in the full
-    image. The cropping parameter controls the size of that box relative to the
-    input image. If it's zero, then the box is the same size as the input and no
-    cropping is performed. If the value is 50%, then the crop box will be half the
-    width and height of the input. In a diagram it looks like this:
-
-    <       width         >
-    +---------------------+
-    |                     |
-    |   width - crop%     |
-    |    <      >         |
-    |    +------+         |
-    |    |      |         |
-    |    |      |         |
-    |    |      |         |
-    |    +------+         |
-    |                     |
-    |                     |
-    +---------------------+
+    크롭은 전체 이미지 중 랜덤 위치에 bounding box를 배치하여 수행된다. 매개변수는 입력 이미지에 대한 box 크기를 제어한다.
+    0이면 입력 사이즈와 같은 크기로 자르지 않는다. 값이 50%이면 crop box는 입력 폭과 높이의 절반이다.
 
     Scaling
     ~~~~~~~
