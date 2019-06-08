@@ -52,7 +52,7 @@ public class LoadingActivity extends AppCompatActivity {
 
     protected void onStart() {
         super.onStart();
-        databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
+        /*databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
@@ -71,7 +71,7 @@ public class LoadingActivity extends AppCompatActivity {
                 Log.w("TAG: ", "Failed to read value", databaseError.toException());
             }
         });
-
+*/
         databaseReference.addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
@@ -81,6 +81,13 @@ public class LoadingActivity extends AppCompatActivity {
             @Override
             public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
                 Log.d("tag", dataSnapshot.child("output").getValue(String.class));
+                if (!Objects.equals(dataSnapshot.child("output").getValue(), "null")) {
+                    output = Objects.requireNonNull(dataSnapshot.child("output").getValue()).toString();
+                    Intent intent = new Intent(LoadingActivity.this, ResultActivity.class);
+                    intent.putExtra("output", output);
+                    startActivity(intent);
+                    finish();
+                }
             }
 
             @Override

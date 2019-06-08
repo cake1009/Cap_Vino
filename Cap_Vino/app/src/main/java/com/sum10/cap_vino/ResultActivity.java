@@ -18,6 +18,7 @@ public class ResultActivity extends AppCompatActivity {
 
         intent = getIntent();
         output = intent.getStringExtra("output");
+        textView = findViewById(R.id.textView2);
 
         textView.setText(output);
     }
