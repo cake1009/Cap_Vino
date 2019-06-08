@@ -34,44 +34,43 @@ public class LoadingActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_loading);
 
-        databaseReference = FirebaseDatabase.getInstance().getReference(Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID));
+        databaseReference = FirebaseDatabase.getInstance().getReference();
 
         button = findViewById(R.id.button);
 
         button.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View view) {
-                databaseReference.child("output").setValue("Gatt");
+                databaseReference.child(Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID)).child("output").setValue("Gatt");
             }
         });
     }
 
-    protected void onResume() { super.onResume(); }
+    protected void onResume() {
+        super.onResume();
+    }
 
     protected void onStart() {
         super.onStart();
-        /*handler.postDelayed(new Runnable() {
-            public void run() {
-                databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                            Log.d("tag", dataSnapshot.child("output").getValue(String.class));
-                            *//*if (Objects.equals(dataSnapshot.child("check").getValue(), true)) {
-                                output = Objects.requireNonNull(dataSnapshot.child("output").getValue()).toString();
-                                Intent intent = new Intent(LoadingActivity.this, ResultActivity.class);
-                                intent.putExtra("output", output);
-                                startActivity(intent);
-                                finish();
-                        }*//*
+        databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                    if (!Objects.equals(snapshot.child("output").getValue(), "null")) {
+                        output = Objects.requireNonNull(snapshot.child("output").getValue()).toString();
+                        Intent intent = new Intent(LoadingActivity.this, ResultActivity.class);
+                        intent.putExtra("output", output);
+                        startActivity(intent);
+                        finish();
                     }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError databaseError) {
-                        Log.w("TAG: ", "Failed to read value", databaseError.toException());
-                    }
-                });
+                }
             }
-        }, 1000);*/
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Log.w("TAG: ", "Failed to read value", databaseError.toException());
+            }
+        });
 
         databaseReference.addChildEventListener(new ChildEventListener() {
             @Override
@@ -101,7 +100,12 @@ public class LoadingActivity extends AppCompatActivity {
         });
     }
 
-    protected void onPause() { super.onPause(); }
 
-    protected void onStop() { super.onStop(); }
+    protected void onPause() {
+        super.onPause();
+    }
+
+    protected void onStop() {
+        super.onStop();
+    }
 }
