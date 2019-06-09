@@ -24,6 +24,7 @@ public class LoadingActivity extends AppCompatActivity {
 
     private DatabaseReference databaseReference;
     private String output = null;
+    private String id;
 
     Handler handler = new Handler();
 
@@ -34,14 +35,15 @@ public class LoadingActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_loading);
 
-        databaseReference = FirebaseDatabase.getInstance().getReference();
+        id = Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+        databaseReference = FirebaseDatabase.getInstance().getReference("request");
 
         button = findViewById(R.id.button);
 
         button.setOnClickListener(new Button.OnClickListener() {
             @Override
             public void onClick(View view) {
-                databaseReference.child(Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID)).child("output").setValue("Gatt");
+                databaseReference.child(id).child("output").setValue("Gatt");
             }
         });
     }
@@ -80,14 +82,13 @@ public class LoadingActivity extends AppCompatActivity {
 
             @Override
             public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-                Log.d("tag", dataSnapshot.child("output").getValue(String.class));
-                if (!Objects.equals(dataSnapshot.child("output").getValue(), "null")) {
-                    output = Objects.requireNonNull(dataSnapshot.child("output").getValue()).toString();
-                    Intent intent = new Intent(LoadingActivity.this, ResultActivity.class);
-                    intent.putExtra("output", output);
-                    startActivity(intent);
-                    finish();
-                }
+                    if (Objects.equals(dataSnapshot.getKey(), id) && !Objects.equals(dataSnapshot.child("output").getValue(), "null")) {
+                        output = Objects.requireNonNull(dataSnapshot.child("output").getValue()).toString();
+                        Intent intent = new Intent(LoadingActivity.this, ResultActivity.class);
+                        intent.putExtra("output", output);
+                        startActivity(intent);
+                        finish();
+                    }
             }
 
             @Override

@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         storageReference = FirebaseStorage.getInstance().getReference();
-        databaseReference = FirebaseDatabase.getInstance().getReference(Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID));
+        databaseReference = FirebaseDatabase.getInstance().getReference("request");
         imageView = findViewById(R.id.imageView);
 
         FloatingActionButton fab = findViewById(R.id.fab);
@@ -146,7 +146,8 @@ public class MainActivity extends AppCompatActivity {
                                                     // ...
                                                 }
                                             });
-                                    databaseReference.child("output").setValue("null");
+                                    databaseReference.child(Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID))
+                                            .child("output").setValue("null");
                                     Intent intent = new Intent(MainActivity.this, LoadingActivity.class);
                                     startActivity(intent);
                                 }
