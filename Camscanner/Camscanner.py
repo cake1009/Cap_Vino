@@ -73,5 +73,3 @@ def slice_image(target_image,stored_dir):
     #plt.title("Middle")
     #plt.show()
 
-slice_image('5344324.jpeg','123.jpg')
-
