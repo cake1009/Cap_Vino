@@ -25,7 +25,7 @@ MIN_NUM_IMAGES_SUGGESTED_FOR_TRAINING = 100
 # 테스트하는데 최소 테스트 데이터 수
 MIN_NUM_IMAGES_REQUIRED_FOR_TESTING = 3
 # 각 샘플 별 최대 이미지 파일 크기 : ~134M
-MAX_NUM_IMAGES_PER_CLASS = 2 ** 27 - 1
+MAX_NUM_IMAGES_PER_CLASS = 2 ** 57 - 1
 
 # path to folders of labeled images
 # os.getcwd() : 현재 사용하고 있는 프로세스의 dictionary 위치를 unicode string으로 알려준다.
@@ -199,38 +199,37 @@ def main():
                                                                                         model_info['input_height'], model_info['input_depth'],
                                                                                         model_info['input_mean'], model_info['input_std'])
         else:
-            # We'll make sure we've calculated the 'bottleneck' image summaries and
-            # cached them on disk.
+            # 'bottlenect' 이미지 확인 후 캐시가 올바르게 되어있는지 확인
             cache_bottlenecks(sess, image_lists, TRAINING_IMAGES_DIR, BOTTLENECK_DIR, jpeg_data_tensor, decoded_image_tensor,
                             resized_image_tensor, bottleneck_tensor, ARCHITECTURE)
-        # end if
 
-        # Add the new layer that we'll be training.
-        print("adding final training layer . . .")
+        # 학습할 새로운 레이어 추가
+        print("최종 학습 레이어 추가...")
         (train_step, cross_entropy, bottleneck_input, ground_truth_input, final_tensor) = add_final_training_ops(len(image_lists.keys()),
                                                                                                                 FINAL_TENSOR_NAME,
                                                                                                                 bottleneck_tensor,
                                                                                                                 model_info['bottleneck_tensor_size'],
                                                                                                                 model_info['quantize_layer'])
-        # Create the operations we need to evaluate the accuracy of our new layer.
-        print("adding eval ops for final training layer . . .")
+
+        # 레이어 정확성을 평가
+        print("최종 학습 레이어에 대한 평가 추가...")
         evaluation_step, prediction = add_evaluation_step(final_tensor, ground_truth_input)
 
-        # Merge all the summaries and write them out to the tensorboard_dir
-        print("writing TensorBoard info . . .")
+        # 모든 데이터 합쳐서 tensorboard_dir 저장
+        print("TensorBoard 정보 작성...")
         merged = tf.summary.merge_all()
         train_writer = tf.summary.FileWriter(TENSORBOARD_DIR + '/train', sess.graph)
         validation_writer = tf.summary.FileWriter(TENSORBOARD_DIR + '/validation')
 
-        # Set up all our weights to their initial default values.
+        # 가중치 초기값으로 설정
         init = tf.global_variables_initializer()
         sess.run(init)
 
-        # Run the training for as many cycles as requested on the command line.
-        print("performing training . . .")
+        # 학습 시작
+        print("학습 시작...")
         for i in range(HOW_MANY_TRAINING_STEPS):
-            # Get a batch of input bottleneck values, either calculated fresh every
-            # time with distortions applied, or from the cache stored on disk.
+            # bottleneck 값 가져오기(할 때 마다 갱신)
+            # 왜곡이 적용된 시간 또는 디스크에 저장된 캐시 시간.
             if doDistortImages:
                 (train_bottlenecks, train_ground_truth) = get_random_distorted_bottlenecks(sess, image_lists, TRAIN_BATCH_SIZE, 'training',
                                                                                         TRAINING_IMAGES_DIR, distorted_jpeg_data_tensor,
@@ -240,10 +239,9 @@ def main():
                                                                                         BOTTLENECK_DIR, TRAINING_IMAGES_DIR, jpeg_data_tensor,
                                                                                         decoded_image_tensor, resized_image_tensor, bottleneck_tensor,
                                                                                         ARCHITECTURE)
-            # end if
 
-            # Feed the bottlenecks and ground truth into the graph, and run a training
-            # step. Capture training summaries for TensorBoard with the `merged` op.
+            # bottleneck과 ground truth를 그래프에 입력하고 학습 실행하십시오.
+            # Merged로 TensorBoard의 학습 캡처.
             train_summary, _ = sess.run([merged, train_step], feed_dict={bottleneck_input: train_bottlenecks, ground_truth_input: train_ground_truth})
             train_writer.add_summary(train_summary, i)
 
@@ -262,44 +260,36 @@ def main():
                     [merged, evaluation_step], feed_dict={bottleneck_input: validation_bottlenecks, ground_truth_input: validation_ground_truth})
                 validation_writer.add_summary(validation_summary, i)
                 tf.logging.info('%s: Step %d: Validation accuracy = %.1f%% (N=%d)' % (datetime.now(), i, validation_accuracy * 100, len(validation_bottlenecks)))
-            # end if
 
-            # Store intermediate results
+            # 중간 결과 저장
             intermediate_frequency = INTERMEDIATE_STORE_FREQUENCY
 
             if (intermediate_frequency > 0 and (i % intermediate_frequency == 0) and i > 0):
                 intermediate_file_name = (INTERMEDIATE_OUTPUT_GRAPHS_DIR + 'intermediate_' + str(i) + '.pb')
-                tf.logging.info('Save intermediate result to : ' + intermediate_file_name)
+                tf.logging.info('중간 결과 저장 : ' + intermediate_file_name)
                 save_graph_to_file(sess, graph, intermediate_file_name)
-            # end if
-        # end for
 
-        # We've completed all our training, so run a final test evaluation on some new images we haven't used before
-        print("running testing . . .")
+        # 학습을 마치고 테스트 데이터로 최종 테스트 평가를 실행
+        print("테스트 시작...")
         test_bottlenecks, test_ground_truth, test_filenames = (get_random_cached_bottlenecks(sess, image_lists, TEST_BATCH_SIZE, 'testing', BOTTLENECK_DIR,
                                                                                             TRAINING_IMAGES_DIR, jpeg_data_tensor, decoded_image_tensor, resized_image_tensor,
                                                                                             bottleneck_tensor, ARCHITECTURE))
         test_accuracy, predictions = sess.run([evaluation_step, prediction], feed_dict={bottleneck_input: test_bottlenecks, ground_truth_input: test_ground_truth})
-        tf.logging.info('Final test accuracy = %.1f%% (N=%d)' % (test_accuracy * 100, len(test_bottlenecks)))
+        tf.logging.info('테스트 결과 = %.1f%% (N=%d)' % (test_accuracy * 100, len(test_bottlenecks)))
 
         if PRINT_MISCLASSIFIED_TEST_IMAGES:
-            tf.logging.info('=== MISCLASSIFIED TEST IMAGES ===')
+            tf.logging.info('=== 분류되지 않은 테스트 이미지 ===')
             for i, test_filename in enumerate(test_filenames):
                 if predictions[i] != test_ground_truth[i]:
                     tf.logging.info('%70s  %s' % (test_filename, list(image_lists.keys())[predictions[i]]))
-                # end if
-            # end for
-        # end if
 
-        # write out the trained graph and labels with the weights stored as constants
-        print("writing trained graph and labbels with weights")
+        # 학습된 그래프와 라벨을 저장된 가중치로 저장
+        print("웨이트로 학습된 그래프 및 레이블 저장")
         save_graph_to_file(sess, graph, OUTPUT_GRAPH)
         with gfile.FastGFile(OUTPUT_LABELS, 'w') as f:
             f.write('\n'.join(image_lists.keys()) + '\n')
-        # end with
 
-        print("done !!")
-# end function
+        print("학습 종료...")
 
 #######################################################################################################################
 def checkIfNecessaryPathsAndFilesExist():
@@ -339,7 +329,7 @@ def checkIfNecessaryPathsAndFilesExist():
     for trainingSubDir in trainingSubDirs:
         # 현재 서브 디렉토리에 이미지가 몇개 있는지 확인하기
         for fileName in os.listdir(trainingSubDir.loc):
-            if fileName.endswith(".jpg"):
+            if fileName.endswith(".jpeg") or fileName.endswith(".jpg"):
                 trainingSubDir.numImages += 1
 
     # 학습 서브 디렉토리에 필요한 최소 학습 이미지 수보다 부족하면 오류 메시지를 보여주고 false 리턴
@@ -629,28 +619,28 @@ def add_input_distortions(flip_left_right, random_crop, random_scale, random_bri
 
     Scaling
     ~~~~~~~
+    스케일링을 통해 다차원의 값들을 비교 분석하기 쉽게 만들어주며, 
+    자료의 오버플로우(overflow)나 언더플로우(underflow)를 방지 하고,
+    독립 변수의 공분산 행렬의 조건수(condition number)를 감소시켜 최적화 과정에서의 안정성 및 수렴 속도를 향상 시킨다.
 
-    Scaling is a lot like cropping, except that the bounding box is always
-    centered and its size varies randomly within the given range. For example if
-    the scale percentage is zero, then the bounding box is the same size as the
-    input and no scaling is applied. If it's 50%, then the bounding box will be in
-    a random range between half the width and height and full size.
+    bounding box가 항상 중심에 있고 크기가 주어진 범위 내에서 무작위로 다르다는 것을 제외하고, scaling은 cropping과 매우 비슷하다.
+    예를 들어 scale 백분율이 0인 경우 bounding box는 입력과 크기가 같고 scale는 적용되지 않는다.
+    50%라면 scaling box는 폭과 높이 그리고 전체 크기 사이의 임의의 범위에 있게 될 것이다.
+
 
     Args:
-        flip_left_right: Boolean whether to randomly mirror images horizontally.
-        random_crop: Integer percentage setting the total margin used around the
-        crop box.
-        random_scale: Integer percentage of how much to vary the scale by.
-        random_brightness: Integer range to randomly multiply the pixel values by.
-        graph.
-        input_width: Horizontal size of expected input image to model.
-        input_height: Vertical size of expected input image to model.
-        input_depth: How many channels the expected input image should have.
-        input_mean: Pixel value that should be zero in the image for the graph.
-        input_std: How much to divide the pixel values by before recognition.
+        flip_left_right: 수평 이미지를 랜덤으로 미러링할지 여부.
+        random_crop: crop box 주위에 사용된 총 마진을 설정하는 정수 비율.
+        random_scale: scale를 변경할 수 있는 정수 비율.
+        random_brightness: 픽셀 값을 그래프로 랜덤하게 곱하는 정수 범위.
+        input_width: 모델 이미지의 수평 크기.
+        input_height: 모델 이미지의 수직 크기.
+        input_depth: 입력 이미지 채널 수.
+        input_mean: 그래프의 이미지에서 0이어야 하는 픽셀 값.
+        input_std: 인식 전에 픽셀 값을 나눈 값.
 
     Returns:
-        The jpeg input layer and the distorted result tensor.
+        jpeg input layer와 왜곡된 결과 tesnor.
     """
 
     jpeg_data = tf.placeholder(tf.string, name='DistortJPGInput')
@@ -669,11 +659,12 @@ def add_input_distortions(flip_left_right, random_crop, random_scale, random_bri
     precropped_image = tf.image.resize_bilinear(decoded_image_4d, precrop_shape_as_int)
     precropped_image_3d = tf.squeeze(precropped_image, squeeze_dims=[0])
     cropped_image = tf.random_crop(precropped_image_3d, [input_height, input_width, input_depth])
+
     if flip_left_right:
         flipped_image = tf.image.random_flip_left_right(cropped_image)
     else:
         flipped_image = cropped_image
-    # end if
+        
     brightness_min = 1.0 - (random_brightness / 100.0)
     brightness_max = 1.0 + (random_brightness / 100.0)
     brightness_value = tf.random_uniform(tensor_shape.scalar(), minval=brightness_min, maxval=brightness_max)
@@ -681,34 +672,31 @@ def add_input_distortions(flip_left_right, random_crop, random_scale, random_bri
     offset_image = tf.subtract(brightened_image, input_mean)
     mul_image = tf.multiply(offset_image, 1.0 / input_std)
     distort_result = tf.expand_dims(mul_image, 0, name='DistortResult')
+
     return jpeg_data, distort_result
-# end function
 
 #######################################################################################################################
 def cache_bottlenecks(sess, image_lists, image_dir, bottleneck_dir, jpeg_data_tensor, decoded_image_tensor,
-                      resized_input_tensor, bottleneck_tensor, architecture):
+                    resized_input_tensor, bottleneck_tensor, architecture):
     """
-    Ensures all the training, testing, and validation bottlenecks are cached.
+    모든 training, test, validation 데이터가 캐시로 저장되는지 확인
 
-    Because we're likely to read the same image multiple times (if there are no distortions applied during training) it
-    can speed things up a lot if we calculate the bottleneck layer values once for each image during preprocessing,
-    and then just read those cached values repeatedly during training. Here we go through all the images we've found,
-    calculate those values, and save them off.
+    이유로는 같은 이미지를 여러 번 읽을 가능성이 있기 때문에(학습 중에 왜곡이 적용되지 않는다면) 
+    사전 처리 중에 각 이미지에 대해 bottleneck이 존재하는 계층 값을 확인한 다음,
+    훈련 중에 캐시된 값을 반복해서 읽기만 하면 속도가 빨라진다.
 
     Args:
-        sess: The current active TensorFlow Session.
-        image_lists: Dictionary of training images for each label.
-        image_dir: Root folder string of the subfolders containing the training images.
-        bottleneck_dir: Folder string holding cached files of bottleneck values.
-        jpeg_data_tensor: Input tensor for jpeg data from file.
-        decoded_image_tensor: The output of decoding and resizing the image.
-        resized_input_tensor: The input node of the recognition graph.
-        bottleneck_tensor: The penultimate output layer of the graph.
-        architecture: The name of the model architecture.
-
-    Returns:
-        Nothing.
+        sess: 현재 사용하고 있는 TensorFlow 세션.
+        image_lists: 각 라벨에 대한 학습 이미지 리스트.
+        image_dir: 학습 이미지를 포함하는 폴더.
+        bottleneck_dir: bottleneck 캐시된 파일을 보관하는 폴더 문자열.
+        jpeg_data_tensor: 파일에서 jpeg 데이터에 대한 텐서 입력.
+        decoded_image_tensor: 디코딩 및 리사이즈 된 이미지 출력. 
+        resized_input_tensor: 인식 그래프의 입력 노드.
+        bottleneck_tensor: 그래프의 2차 출력 계층.
+        architecture: 모델 아키텍쳐 이름
     """
+
     how_many_bottlenecks = 0
     makeDirIfDoesNotExist(bottleneck_dir)
     for label_name, label_lists in image_lists.items():
@@ -716,38 +704,35 @@ def cache_bottlenecks(sess, image_lists, image_dir, bottleneck_dir, jpeg_data_te
             category_list = label_lists[category]
             for index, unused_base_name in enumerate(category_list):
                 get_or_create_bottleneck(sess, image_lists, label_name, index, image_dir, category, bottleneck_dir,
-                                         jpeg_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture)
-            # end for
+                                        jpeg_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture)
             how_many_bottlenecks += 1
             if how_many_bottlenecks % 100 == 0:
-                tf.logging.info(str(how_many_bottlenecks) + ' bottleneck files created.')
-            # end if
-# end function
+                tf.logging.info(str(how_many_bottlenecks) + ' bottleneck 파일 생성완료.')
 
 #######################################################################################################################
 def get_or_create_bottleneck(sess, image_lists, label_name, index, image_dir, category, bottleneck_dir, jpeg_data_tensor,
-                             decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture):
+                            decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture):
     """
-    Retrieves or calculates bottleneck values for an image.
+    이미지 bottleneck 값 검색 또는 계산
 
-    If a cached version of the bottleneck data exists on-disk, return that, otherwise calculate the data and save it to disk for future use.
+    캐시된 bottleneck 데이터가 디스크에 있는 경우 이를 리턴하고, 그렇지 않으면 데이터를 계산하여 나중에 사용할 수 있도록 디스크에 저장
 
     Args:
-        sess: The current active TensorFlow Session.
-        image_lists: Dictionary of training images for each label.
-        label_name: Label string we want to get an image for.
-        index: Integer offset of the image we want. This will be modulo-ed by the available number of images for the label, so it can be arbitrarily large.
-        image_dir: Root folder string of the subfolders containing the training images.
-        category: Name string of which set to pull images from - training, testing, or validation.
-        bottleneck_dir: Folder string holding cached files of bottleneck values.
-        jpeg_data_tensor: The tensor to feed loaded jpeg data into.
-        decoded_image_tensor: The output of decoding and resizing the image.
-        resized_input_tensor: The input node of the recognition graph.
-        bottleneck_tensor: The output tensor for the bottleneck values.
-        architecture: The name of the model architecture.
+        sess: 현재 사용하고 있는 텐서플로우 세션
+        image_lists: 각 라벨에 대한 학습 이미지 위치
+        label_name: 이미지를 가져올 레이블
+        index: 원하는 이미지의 정수 오프셋. 사용할 수 있는 이미지 수에 의해 모듈화되므로 수가 상황에 따라 다름
+        image_dir: 학습 이미지를 포함하는 폴더의 루트 폴더 이름
+        category: 이미지를 가져올 카테고리 선택 - training, testing, or validation
+        bottleneck_dir: bottleneck 내 캐시된 파일을 보관하는 폴더 문자열
+        jpeg_data_tensor: 로드된 jpeg 데이터를 공급할 텐서
+        decoded_image_tensor: 이미지 디코딩 및 리사이즈 된 이미지 출력
+        resized_input_tensor: 인식 그래프의 입력 노드
+        bottleneck_tensor: bottleneck 출력 텐서
+        architecture: 아키텍쳐 모델 이름
 
     Returns:
-        Numpy array of values produced by the bottleneck layer for the image.
+        이미지 bottleneck 레이어에 의해 생성된 numpy 배열.
     """
     label_lists = image_lists[label_name]
     sub_dir = label_lists['dir']
@@ -756,169 +741,157 @@ def get_or_create_bottleneck(sess, image_lists, label_name, index, image_dir, ca
     bottleneck_path = get_bottleneck_path(image_lists, label_name, index, bottleneck_dir, category, architecture)
     if not os.path.exists(bottleneck_path):
         create_bottleneck_file(bottleneck_path, image_lists, label_name, index, image_dir, category, sess, jpeg_data_tensor,
-                               decoded_image_tensor, resized_input_tensor, bottleneck_tensor)
-    # end if
+                            decoded_image_tensor, resized_input_tensor, bottleneck_tensor)
 
-    # read in the contents of the bottleneck file as one big string
+    # bottleneckt 파일의 내용을 하나의 큰 문자열로 만들기
     with open(bottleneck_path, 'r') as bottleneck_file:
         bottleneckBigString = bottleneck_file.read()
-    # end with
 
     bottleneckValues = []
     errorOccurred = False
     try:
-        # split the bottleneck file contents read in as one big string into individual float values
+        # 하나의 큰 문자열로 읽은 bottleneck 파일 내용을 개별 값으로 분할
         bottleneckValues = [float(individualString) for individualString in bottleneckBigString.split(',')]
     except ValueError:
-        tf.logging.warning('Invalid float found, recreating bottleneck')
+        tf.logging.warning('올바르지 않는 값을 발견했습니다 - bottleneck 다시 만듭니다')
         errorOccurred = True
-    # end try
 
     if errorOccurred:
-        # if an error occurred above, create (or re-create) the bottleneck file
+        # 위에서 오류가 발생한 경우 bottleneck 파일 생성
         create_bottleneck_file(bottleneck_path, image_lists, label_name, index, image_dir, category, sess,
-                               jpeg_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor)
+                            jpeg_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor)
 
-        # read in the contents of the newly created bottleneck file
+        # 새로 만든 bottleneck 파일의 내용을 읽기
         with open(bottleneck_path, 'r') as bottleneck_file:
             bottleneckBigString = bottleneck_file.read()
-        # end with
 
-        # split the bottleneck file contents read in as one big string into individual float values again
+        # 하나의 큰 문자열로 읽은 bottleneck 파일 내용을 개별 값으로 분할
         bottleneckValues = [float(individualString) for individualString in bottleneckBigString.split(',')]
-    # end if
+
     return bottleneckValues
-# end function
 
 #######################################################################################################################
 def get_bottleneck_path(image_lists, label_name, index, bottleneck_dir, category, architecture):
     """"
-    Returns a path to a bottleneck file for a label at the given index.
+    지정된 인덱스 레이블에 대한 bottleneck 파일 경로 리턴
 
     Args:
-        image_lists: Dictionary of training images for each label.
-        label_name: Label string we want to get an image for.
-        index: Integer offset of the image we want. This will be moduloed by the
-        available number of images for the label, so it can be arbitrarily large.
-        bottleneck_dir: Folder string holding cached files of bottleneck values.
-        category: Name string of set to pull images from - training, testing, or
-        validation.
-        architecture: The name of the model architecture.
+        image_lists: 각각 라벨에 대한 학습 이미지 경로
+        label_name: 이미지를 가져올 레이블 이름
+        index: 원하는 이미지의 정수 오프셋. 사용할 수 있는 이미지 수에 의해 모듈화되므로 수가 상황에 따라 다름
+        bottleneck_dir: bottleneck에 캐시된 파일을 가지고 있는 폴더
+        category: 이미지를 가져올 카테고리 선택 - training, testing, or validation
+        architecture: 사용할 아키텍쳐 모델 이름
 
     Returns:
-        File system path string to an image that meets the requested parameters.
+        요청된 파라미터를 충족하는 이미지에 대한 파일 시스템 경로
     """
     return get_image_path(image_lists, label_name, index, bottleneck_dir, category) + '_' + architecture + '.txt'
-# end function
 
 #######################################################################################################################
 def create_bottleneck_file(bottleneck_path, image_lists, label_name, index,
-                           image_dir, category, sess, jpeg_data_tensor,
-                           decoded_image_tensor, resized_input_tensor,
-                           bottleneck_tensor):
-    """Create a single bottleneck file."""
-    tf.logging.info('Creating bottleneck at ' + bottleneck_path)
+                        image_dir, category, sess, jpeg_data_tensor,
+                        decoded_image_tensor, resized_input_tensor,
+                        bottleneck_tensor):
+    """
+        단일 bottleneck 파일 생성
+    """
+    tf.logging.info('bottleneck 파일을 생성합니다 - ' + bottleneck_path)
     image_path = get_image_path(image_lists, label_name, index, image_dir, category)
     if not gfile.Exists(image_path):
-        tf.logging.fatal('File does not exist %s', image_path)
-    # end if
+        tf.logging.fatal('파일이 %s 이 존재하지 않습니다', image_path)
+
     image_data = gfile.FastGFile(image_path, 'rb').read()
     try:
         bottleneck_values = run_bottleneck_on_image(sess, image_data, jpeg_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor)
     except Exception as e:
-        raise RuntimeError('Error during processing file %s (%s)' % (image_path, str(e)))
-    # end try
+        raise RuntimeError('파일을 처리하던 중 에러가 발생했습니다 - %s (%s)' % (image_path, str(e)))
 
     bottleneck_string = ','.join(str(x) for x in bottleneck_values)
     with open(bottleneck_path, 'w') as bottleneck_file:
         bottleneck_file.write(bottleneck_string)
-    # end with
-# end function
 
 #######################################################################################################################
 def run_bottleneck_on_image(sess, image_data, image_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor):
     """
     Runs inference on an image to extract the 'bottleneck' summary layer.
+    함수를 실행하여 'bottleneck' 레이어 추출
     Args:
-        sess: Current active TensorFlow Session.
-        image_data: String of raw JPEG data.
-        image_data_tensor: Input data layer in the graph.
-        decoded_image_tensor: Output of initial image resizing and preprocessing.
-        resized_input_tensor: The input node of the recognition graph.
-        bottleneck_tensor: Layer before the final softmax.
+        sess: 현재 활성화된 tensorflow 세션
+        image_data: JPEG 데이터 이름
+        image_data_tensor: 그래프 데이터 레이어 입력
+        decoded_image_tensor: 초기 이미지 리사이즈 & preprocessing 결과
+        resized_input_tensor: 인식된 그래프 입력 노드
+        bottleneck_tensor: 소프트맥스보다 앞서 레이어를 쌓음
 
     Returns:
-        Numpy array of bottleneck values.
+        bottleneck 값 - numpy 
     """
-    # First decode the JPEG image, resize it, and rescale the pixel values.
+    # 먼저 JPEG 이미지를 디코딩하고 리사이즈 하고 픽셀 값의 스케일을 재조정.
     resized_input_values = sess.run(decoded_image_tensor, {image_data_tensor: image_data})
-    # Then run it through the recognition network.
+    # 인식 네트워크를 통해 실행.
     bottleneck_values = sess.run(bottleneck_tensor, {resized_input_tensor: resized_input_values})
     bottleneck_values = np.squeeze(bottleneck_values)
     return bottleneck_values
-# end function
 
 #######################################################################################################################
 def get_image_path(image_lists, label_name, index, image_dir, category):
     """"
-    Returns a path to an image for a label at the given index.
+    지정된 인덱스의 레이블 이미지에 대한 위치 리턴
 
     Args:
-        image_lists: Dictionary of training images for each label.
-        label_name: Label string we want to get an image for.
-        index: Int offset of the image we want. This will be moduloed by the available number of images for the label, so it can be arbitrarily large.
-        image_dir: Root folder string of the subfolders containing the training images.
-        category: Name string of set to pull images from - training, testing, or validation.
+        image_lists: 학습 이미지와 각각 라벨에 대한 위치
+        label_name: 이미지를 가져올 레이블 문자열
+        index: 원하는 이미지의 내부 오프셋. 라벨에 사용하는 이미지 수에 따라 바뀌므로 값이 일정치 않다.
+        image_dir: 학습 이미지를 포함하는 폴더의 루트 폴더 문자열.
+        category: 가져올 이미지를 포함하고 있는 문자열 이름 - training, testing, or validation.
 
     Returns:
-        File system path string to an image that meets the requested parameters.
+        요청된 매개 변수를 충족하는 이미지에 대한 파일 시스템 경로
     """
     if label_name not in image_lists:
-        tf.logging.fatal('Label does not exist %s.', label_name)
-    # end if
+        tf.logging.fatal('라벨이 존재하지 않습니다 - %s.', label_name)
+
     label_lists = image_lists[label_name]
     if category not in label_lists:
-        tf.logging.fatal('Category does not exist %s.', category)
-    # end if
+        tf.logging.fatal('카테고리가 존재하지 않습니다 - %s.', category)
+
     category_list = label_lists[category]
     if not category_list:
-        tf.logging.fatal('Label %s has no images in the category %s.', label_name, category)
-    # end if
+        tf.logging.fatal('라벨 %s 카테고리 %s 에 존재하지 않습니다.', label_name, category)
+
     mod_index = index % len(category_list)
     base_name = category_list[mod_index]
     sub_dir = label_lists['dir']
     full_path = os.path.join(image_dir, sub_dir, base_name)
     return full_path
-# end function
+
 
 #######################################################################################################################
 def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor, bottleneck_tensor_size, quantize_layer):
     """
-    Adds a new softmax and fully-connected layer for training.
+    학습 할 소프트맥스와 fully-connected layer 추가.
 
-    We need to retrain the top layer to identify our new classes, so this function
-    adds the right operations to the graph, along with some variables to hold the
-    weights, and then sets up all the gradients for the backward pass.
-
-    The set up for the softmax and fully-connected layers is based on:
-    https://www.tensorflow.org/versions/master/tutorials/mnist/beginners/index.html
+    새로운 layer를 식별하기 위해 top layer를 재학습 해야한다.
+    이를 위해 그래프에 연산을 추가하고, 가중치를 고정하기 위한 몇 가지 변수를 추가한다. 
+    마지막으로 backward pass를 위한 gradient를 실시.
 
     Args:
-        class_count: Integer of how many categories of things we're trying to recognize.
-        final_tensor_name: Name string for the new final node that produces results.
-        bottleneck_tensor: The output of the main CNN graph.
-        bottleneck_tensor_size: How many entries in the bottleneck vector.
-        quantize_layer: Boolean, specifying whether the newly added layer should be quantized.
+        class_count: 인식할 이미지 리스트 갯수.
+        final_tensor_name: 결과를 생성하는 최종 노드 이름.
+        bottleneck_tensor: CNN 그래프.
+        bottleneck_tensor_size: bottleneck 벡터 수.
+        quantize_layer: 새로 추가된 레이어를 정량화해야 하는지 판단.
 
     Returns:
-        The tensors for the training and cross entropy results, and tensors for the bottleneck input and ground truth input.
+        학습 및 cross entropy 결과의 텐서. 
+        bottleneck 입력과 ground truth 텐서.
     """
     with tf.name_scope('input'):
         bottleneck_input = tf.placeholder_with_default(bottleneck_tensor, shape=[None, bottleneck_tensor_size], name='BottleneckInputPlaceholder')
         ground_truth_input = tf.placeholder(tf.int64, [None], name='GroundTruthInput')
-    # end with
 
-    # Organizing the following ops as `final_training_ops` so they're easier to see in TensorBoard
+    # TensorBoard에서 보다 쉽게 볼 수 있도록 "final_training_ops"로 구성
     layer_name = 'final_training_ops'
     with tf.name_scope(layer_name):
         quantized_layer_weights = None
@@ -929,115 +902,106 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor, bo
             if quantize_layer:
                 quantized_layer_weights = quant_ops.MovingAvgQuantize(layer_weights, is_training=True)
                 attachTensorBoardSummaries(quantized_layer_weights)
-            # end if
 
-            # this comment is necessary to suppress an unnecessary PyCharm warning
-            # noinspection PyTypeChecker
+            # 불필요한 PyCharm 경고 & noinspection PyTypeChecker 억제
             attachTensorBoardSummaries(layer_weights)
-        # end with
+
         with tf.name_scope('biases'):
             layer_biases = tf.Variable(tf.zeros([class_count]), name='final_biases')
             if quantize_layer:
                 quantized_layer_biases = quant_ops.MovingAvgQuantize(layer_biases, is_training=True)
                 attachTensorBoardSummaries(quantized_layer_biases)
-            # end if
 
-            # this comment is necessary to suppress an unnecessary PyCharm warning
-            # noinspection PyTypeChecker
+            # 불필요한 PyCharm 경고 & noinspection PyTypeChecker 억제
             attachTensorBoardSummaries(layer_biases)
-        # end with
+
         with tf.name_scope('Wx_plus_b'):
             if quantize_layer:
                 logits = tf.matmul(bottleneck_input, quantized_layer_weights) + quantized_layer_biases
                 logits = quant_ops.MovingAvgQuantize(logits, init_min=-32.0, init_max=32.0, is_training=True, num_bits=8,
-                                                     narrow_range=False, ema_decay=0.5)
+                                                    narrow_range=False, ema_decay=0.5)
                 tf.summary.histogram('pre_activations', logits)
             else:
                 logits = tf.matmul(bottleneck_input, layer_weights) + layer_biases
                 tf.summary.histogram('pre_activations', logits)
-            # end if
-        # end with
-    # end with
+
     final_tensor = tf.nn.softmax(logits, name=final_tensor_name)
 
     tf.summary.histogram('activations', final_tensor)
 
     with tf.name_scope('cross_entropy'):
         cross_entropy_mean = tf.losses.sparse_softmax_cross_entropy(labels=ground_truth_input, logits=logits)
-    # end with
 
     tf.summary.scalar('cross_entropy', cross_entropy_mean)
 
     with tf.name_scope('train'):
         optimizer = tf.train.GradientDescentOptimizer(LEARNING_RATE)
         train_step = optimizer.minimize(cross_entropy_mean)
-    # end with
 
     return (train_step, cross_entropy_mean, bottleneck_input, ground_truth_input, final_tensor)
-# end function
 
 #######################################################################################################################
 def attachTensorBoardSummaries(var):
-    """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+    """
+    텐서 요약 첨부(텐서보드 시각화를 위해서)
+    """
     with tf.name_scope('summaries'):
         mean = tf.reduce_mean(var)
         tf.summary.scalar('mean', mean)
         with tf.name_scope('stddev'):
             stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-        # end with
+
         tf.summary.scalar('stddev', stddev)
         tf.summary.scalar('max', tf.reduce_max(var))
         tf.summary.scalar('min', tf.reduce_min(var))
         tf.summary.histogram('histogram', var)
-    # end with
-# end function
 
 #######################################################################################################################
 def add_evaluation_step(result_tensor, ground_truth_tensor):
     """
-    Inserts the operations we need to evaluate the accuracy of our results.
+    결과의 정확성 평가
+
     Args:
-        result_tensor: The new final node that produces results.
-        ground_truth_tensor: The node we feed ground truth data into.
+        result_tensor: 결과를 생성하는 최종 노드.
+        ground_truth_tensor: ground truth 데이터 노드.
+
     Returns:
-        Tuple of (evaluation step, prediction).
+        평가, 예측 튜플
     """
 
     with tf.name_scope('accuracy'):
         with tf.name_scope('correct_prediction'):
             prediction = tf.argmax(result_tensor, 1)
             correct_prediction = tf.equal(prediction, ground_truth_tensor)
-        # end with
+
         with tf.name_scope('accuracy'):
             evaluation_step = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-        # end with
+
     tf.summary.scalar('accuracy', evaluation_step)
     return evaluation_step, prediction
-# end function
 
 #######################################################################################################################
 def get_random_distorted_bottlenecks(sess, image_lists, how_many, category, image_dir, input_jpeg_tensor, distorted_image,
-                                     resized_input_tensor, bottleneck_tensor):
+                                    resized_input_tensor, bottleneck_tensor):
     """
-    Retrieves bottleneck values for training images, after distortions.
+    왜곡 작업 후 이미지 학습 bottleneck 값 확인
 
-    If we're training with distortions like crops, scales, or flips, we have to recalculate the full model for every image,
-    and so we can't use cached bottleneck values. Instead we find random images for the requested category, run them through
-    the distortion graph, and then the full graph to get the bottleneck results for each.
+    만약 crop , scale, flip 같은 왜곡을 이용해 학습하면 모든 이미지에 대한 모델을 다시 계산해야 이는 캐시된 bottleneck 값을 사용할 수 없다.
+    이를 해결하기 위해 요청된 범위에 대한 임의의 이미지를 찾아 왜곡 그래프 실행한 다음 전체 그래프에 각 범위에 대한 bottleneck 결과를 얻는다.
 
     Args:
-        sess: Current TensorFlow Session.
-        image_lists: Dictionary of training images for each label.
-        how_many: The integer number of bottleneck values to return.
-        category: Name string of which set of images to fetch - training, testing, or validation.
-        image_dir: Root folder string of the subfolders containing the training images.
-        input_jpeg_tensor: The input layer we feed the image data to.
-        distorted_image: The output node of the distortion graph.
-        resized_input_tensor: The input node of the recognition graph.
-        bottleneck_tensor: The bottleneck output layer of the CNN graph.
+        sess: 현재 텐서플로우 세션
+        image_lists: 각 라벨에 대한 학습 이미지 리스트
+        how_many: 사용할 bottleneck 값 개수
+        category: 가져올 이미지 집합 이름 - training, testing, validation
+        image_dir: 학습 이미지를 포함하는 하위 폴더의 루트 폴더 문자열
+        input_jpeg_tensor: 이미지 데이터를 제공하는 입력 레이어
+        distorted_image: 왜곡 그래프 출력 노드.
+        resized_input_tensor: 인식된 그래프의 입력 노드.
+        bottleneck_tensor: CNN 그래프 bottlenck 레이어.
 
     Returns:
-        List of bottleneck arrays and their corresponding ground truths.
+        bottleneck 배열과 ground truth
     """
     class_count = len(image_lists.keys())
     bottlenecks = []
@@ -1048,84 +1012,80 @@ def get_random_distorted_bottlenecks(sess, image_lists, how_many, category, imag
         image_index = random.randrange(MAX_NUM_IMAGES_PER_CLASS + 1)
         image_path = get_image_path(image_lists, label_name, image_index, image_dir, category)
         if not gfile.Exists(image_path):
-            tf.logging.fatal('File does not exist %s', image_path)
-        # end if
+            tf.logging.fatal('파일이 위치하지 않습니다 : %s', image_path)
+
         jpeg_data = gfile.FastGFile(image_path, 'rb').read()
-        # Note that we materialize the distorted_image_data as a numpy array before
-        # sending running inference on the image. This involves 2 memory copies and
-        # might be optimized in other implementations.
+        # 이미지에 대한 실행 추론을 전송하기 전에 distorted_image_data를 numpy 배열로 구체화.
+        # 2개의 복사본을 생성하고 최적화.
         distorted_image_data = sess.run(distorted_image, {input_jpeg_tensor: jpeg_data})
         bottleneck_values = sess.run(bottleneck_tensor, {resized_input_tensor: distorted_image_data})
         bottleneck_values = np.squeeze(bottleneck_values)
         bottlenecks.append(bottleneck_values)
         ground_truths.append(label_index)
-    # end for
+
     return bottlenecks, ground_truths
-# end function
 
 #######################################################################################################################
 def get_random_cached_bottlenecks(sess, image_lists, how_many, category, bottleneck_dir, image_dir, jpeg_data_tensor,
-                                  decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture):
+                                decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture):
     """
-    Retrieves bottleneck values for cached images.
+    캐시된 이미지의 bottleneck 값 검색
 
-    If no distortions are being applied, this function can retrieve the cached bottleneck values directly from disk for
-    images. It picks a random set of images from the specified category.
+    왜곡이 적용되지 않는 경우 이 기능은 디스크에서 이미지를 위해 캐시된 병목 현상 값을 직접 검색할 수 있다.
+    지정된 범위에서 임의의 이미지를 선택한다.
 
     Args:
-        sess: Current TensorFlow Session.
-        image_lists: Dictionary of training images for each label.
-        how_many: If positive, a random sample of this size will be chosen.  If negative, all bottlenecks will be retrieved.
-        category: Name string of which set to pull from - training, testing, or validation.
-        bottleneck_dir: Folder string holding cached files of bottleneck values.
-        image_dir: Root folder string of the subfolders containing the training images.
-        jpeg_data_tensor: The layer to feed jpeg image data into.
-        decoded_image_tensor: The output of decoding and resizing the image.
-        resized_input_tensor: The input node of the recognition graph.
-        bottleneck_tensor: The bottleneck output layer of the CNN graph.
-        architecture: The name of the model architecture.
+        sess: 현재 텐서플로우 세션
+        image_lists: 각 라벨에 대한 학습 이미지 리스트
+        how_many: true일 경우 랜덤 이미지 리스트가 선택.  false이면 bottleneck return
+        category: 가져올 이름 문자열 - training, testing, validation
+        bottleneck_dir: 캐시된 파일을 보관하는 폴더 문자열
+        image_dir: 학습 이미지 폴더
+        jpeg_data_tensor: jpeg 이미지 데이터 계층
+        decoded_image_tensor: 이미지 디코딩 및 리사이즈 출력
+        resized_input_tensor: 인식 그래프의 입력 노드
+        bottleneck_tensor: CNN 그래프의 bottleneck 레이어
+        architecture: 모델 아키텍쳐 이름
 
     Returns:
-        List of bottleneck arrays, their corresponding ground truths, and the relevant filenames.
+        bottleneck 배열 리스트, 일치하는 ground truth 또는 파일 이름
     """
     class_count = len(image_lists.keys())
     bottlenecks = []
     ground_truths = []
     filenames = []
+
     if how_many >= 0:
-        # Retrieve a random sample of bottlenecks.
+        # bottleneck 랜덤 샘플 검색
         for unused_i in range(how_many):
             label_index = random.randrange(class_count)
             label_name = list(image_lists.keys())[label_index]
             image_index = random.randrange(MAX_NUM_IMAGES_PER_CLASS + 1)
             image_name = get_image_path(image_lists, label_name, image_index, image_dir, category)
             bottleneck = get_or_create_bottleneck(sess, image_lists, label_name, image_index, image_dir, category, bottleneck_dir,
-                                                  jpeg_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture)
+                                                jpeg_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture)
             bottlenecks.append(bottleneck)
             ground_truths.append(label_index)
             filenames.append(image_name)
-        # end for
+
     else:
-        # Retrieve all bottlenecks.
+        # 모든 bottleneck 검색
         for label_index, label_name in enumerate(image_lists.keys()):
             for image_index, image_name in enumerate(image_lists[label_name][category]):
                 image_name = get_image_path(image_lists, label_name, image_index, image_dir, category)
                 bottleneck = get_or_create_bottleneck(sess, image_lists, label_name, image_index, image_dir, category, bottleneck_dir,
-                                                      jpeg_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture)
+                                                    jpeg_data_tensor, decoded_image_tensor, resized_input_tensor, bottleneck_tensor, architecture)
                 bottlenecks.append(bottleneck)
                 ground_truths.append(label_index)
                 filenames.append(image_name)
     return bottlenecks, ground_truths, filenames
-# end function
 
 #######################################################################################################################
 def save_graph_to_file(sess, graph, graph_file_name):
     output_graph_def = graph_util.convert_variables_to_constants(sess, graph.as_graph_def(), [FINAL_TENSOR_NAME])
     with gfile.FastGFile(graph_file_name, 'wb') as f:
         f.write(output_graph_def.SerializeToString())
-    # end with
     return
-# end function
 
 #######################################################################################################################
 if __name__ == '__main__':
