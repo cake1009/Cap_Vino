@@ -13,6 +13,7 @@
         android:layout_width="350dp"
         android:layout_height="500dp"
         app:srcCompat="@android:color/transparent"
+        android:layout_gravity="center"
         tools:layout_editor_absoluteX="30dp"
         tools:layout_editor_absoluteY="77dp" />
 </LinearLayout>
