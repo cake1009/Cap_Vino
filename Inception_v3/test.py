@@ -13,6 +13,7 @@ SCALAR_BLUE = (255.0, 0.0, 0.0)
 
 #######################################################################################################################
 def main():
+
     print("프로그램 시작...")
 
     # 테스트 파일들이 존재하는지 확인
@@ -113,10 +114,7 @@ def main():
             cv2.waitKey()
             # after a key is pressed, close the current window to prep for the next time around
             cv2.destroyAllWindows()
-        # end for
-    # end with
 
-    # write the graph to file so we can view with TensorBoard
     # TensorBoard로 볼 수 있도록 그래프를 파일에 기록하십시오.
     tfFileWriter = tf.summary.FileWriter(os.getcwd())
     tfFileWriter.add_graph(sess.graph)
