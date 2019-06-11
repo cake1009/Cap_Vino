@@ -27,4 +27,15 @@ users_ref = ref.child('request')
 
 #users_ref.update({'output' : '승환아~1'})
         
-users_ref.update({'87da01bd8047adb0' : {'output' : '승환아~2'}})
+users_ref.update({'ID' : '승환아~2',
+                  'URL':'https://firebasestorage.googleapis.com/v0/b/cap-vino.appspot.com/o/images%2F87da01bd8047adb0.jpg?alt=media&token=36461d10-f88d-4337-97e7-57227739a344',
+                  'Wine_Name':'yo wine'})
+#users_ref.update({'87da01bd8047adb0' : {'output' : '승환아~2'}})
+
+aa_ref = users_ref.child('87da01bd8047adb0/url') #url값 reference
+
+print(aa_ref.get())#url값 출력
+
+#print(ref.get())
+
+#users_ref.update({'user' : {'output' : 'null', 'url':'null'}})
